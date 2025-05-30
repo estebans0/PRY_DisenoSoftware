@@ -1,0 +1,318 @@
+<div class="container mx-auto py-6 space-y-6">
+
+  <!-- Header & Controls -->
+  <div class="flex justify-between items-center">
+    <div>
+      <h1 class="text-3xl font-bold">Session #{{ session.number }}</h1>
+      <p class="text-gray-500 mt-1">
+        {{ session.date }} • {{ session.time }} • {{ session.location }}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button
+        *ngIf="!sessionStarted"
+        (click)="startSession()"
+        class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm"
+      >
+        <lucide-icon name="Play" class="h-4 w-4"/> Start Session
+      </button>
+      <button
+        *ngIf="sessionStarted && !sessionEnded"
+        (click)="endSession()"
+        class="px-4 py-2 bg-red-600 text-white rounded flex items-center gap-1 text-sm"
+      >
+        <lucide-icon name="Square" class="h-4 w-4"/> End Session
+      </button>
+      <button
+        *ngIf="sessionEnded"
+        (click)="generateMinutes()"
+        class="px-4 py-2 bg-green-600 text-white rounded flex items-center gap-1 text-sm"
+      >
+        <lucide-icon name="FileText" class="h-4 w-4"/> Generate Minutes
+      </button>
+    </div>
+  </div>
+
+  <!-- Top‐level cards -->
+  <div class="grid md:grid-cols-3 gap-6">
+    <!-- Timer -->
+    <div class="border rounded-lg p-4 space-y-2">
+      <h2 class="font-semibold">Session Timer</h2>
+      <div class="flex justify-between">
+        <span>Current Time:</span>
+        <span>{{ currentTime | date:'shortTime' }}</span>
+      </div>
+      <div *ngIf="startTime" class="flex justify-between">
+        <span>Start Time:</span>
+        <span>{{ startTime | date:'shortTime' }}</span>
+      </div>
+      <div *ngIf="sessionStarted && !sessionEnded" class="flex justify-between">
+        <span>Duration:</span>
+        <span class="font-medium">{{ getSessionElapsed() }}</span>
+      </div>
+      <div *ngIf="sessionEnded" class="flex justify-between">
+        <span>Duration:</span>
+        <span class="font-medium">{{ getTotalDuration() }}</span>
+      </div>
+    </div>
+
+    <!-- Attendance -->
+    <div class="border rounded-lg p-4 space-y-2">
+      <h2 class="font-semibold">Attendance</h2>
+      <div class="flex justify-between">
+        <span>Present:</span>
+        <span>{{ presentCount }} of {{ attendees.length }}</span>
+      </div>
+      <div class="flex justify-between">
+        <span>Quorum:</span>
+        <span
+          [class.text-green-600]="quorumAchieved"
+          [class.text-red-600]="!quorumAchieved"
+        >
+          {{ quorumAchieved ? 'Achieved' : 'Not Achieved' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Current Item -->
+    <div class="border rounded-lg p-4 space-y-2">
+      <h2 class="font-semibold">Current Item</h2>
+      <ng-container *ngIf="activeItem !== null; else noActive">
+        <div class="font-medium">{{ activeAgendaItem?.title }}</div>
+        <div class="text-gray-600 text-sm">{{ activeAgendaItem?.presenter }}</div>
+        <div class="flex justify-between items-center mt-2">
+          <span>
+            {{ formatTime(itemTimers[activeItem!].elapsed) }}
+            / {{ activeAgendaItem?.duration }} min
+          </span>
+          <!-- FIX: toggle play/pause based on running flag -->
+          <button
+            (click)="
+              itemTimers[activeItem!].running
+                ? pauseAgendaItem(activeItem!)
+                : startAgendaItem(activeItem!)
+            "
+            class="px-2 py-1 border rounded text-sm"
+          >
+            <lucide-icon
+              [name]=" itemTimers[activeItem!].running ? 'Pause' : 'Play' "
+              class="h-4 w-4"
+            />
+          </button>
+        </div>
+      </ng-container>
+      <ng-template #noActive>
+        <div class="text-gray-500">
+          {{ sessionEnded
+            ? 'Session ended'
+            : sessionStarted
+              ? 'No active item'
+              : 'Session not started' }}
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <!-- Agenda Execution -->
+  <div class="border rounded-lg p-4 space-y-4">
+    <h3 class="font-semibold">Agenda Execution</h3>
+
+    <div *ngFor="let item of agenda; let i = index" class="border rounded-lg overflow-hidden">
+      <div class="flex justify-between items-center p-4">
+        <div class="flex items-center gap-4">
+          <div class="h-8 w-8 flex items-center justify-center rounded-full bg-gray-100 text-sm">
+            {{ i + 1 }}
+          </div>
+          <div>
+            <div class="font-medium">{{ item.title }}</div>
+            <div class="text-gray-600 text-sm">
+              {{ item.presenter }} • {{ item.duration }} min
+            </div>
+          </div>
+        </div>
+        <div class="flex gap-2">
+          <!-- FIX: reflect running flag per-item -->
+          <button
+            (click)="
+              itemTimers[item.id].running
+                ? pauseAgendaItem(item.id)
+                : startAgendaItem(item.id)
+            "
+            class="px-2 py-1 border rounded text-sm"
+          >
+            <lucide-icon
+              [name]=" itemTimers[item.id].running ? 'Pause' : 'Play' "
+              class="h-4 w-4"
+            />
+          </button>
+          <button
+            (click)="toggleOpen(item.id)"
+            class="px-2 py-1 border rounded text-sm"
+          >
+            <lucide-icon
+              [name]="openItems[item.id] ? 'ChevronUp' : 'ChevronDown'"
+              class="h-4 w-4"
+            />
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="openItems[item.id]" class="border-t p-4 space-y-4">
+        <!-- Notes -->
+        <div>
+          <h4 class="font-medium">Notes</h4>
+          <textarea
+            [(ngModel)]="item.notes"
+            class="w-full border rounded p-2 min-h-[80px]"
+            [disabled]="sessionEnded"
+          ></textarea>
+          <button
+            class="mt-2 px-3 py-1 border rounded text-sm"
+            [disabled]="sessionEnded"
+          >Save Notes</button>
+        </div>
+
+        <!-- Voting -->
+        <div>
+          <h4 class="font-medium">Voting</h4>
+          <div class="grid grid-cols-3 gap-4">
+            <div>
+              <label class="block text-sm">In Favor</label>
+              <input
+                type="number"
+                min="0" [max]="attendees.length"
+                [(ngModel)]="item.voting.inFavor"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-1"
+              />
+            </div>
+            <div>
+              <label class="block text-sm">Against</label>
+              <input
+                type="number"
+                min="0" [max]="attendees.length"
+                [(ngModel)]="item.voting.against"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-1"
+              />
+            </div>
+            <div>
+              <label class="block text-sm">Abstain</label>
+              <input
+                type="number"
+                min="0" [max]="attendees.length"
+                [(ngModel)]="item.voting.abstain"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-1"
+              />
+            </div>
+          </div>
+          <div class="flex items-center gap-2 mt-2">
+            <label class="block text-sm">Result</label>
+            <select
+              [(ngModel)]="item.voting.result"
+              [disabled]="sessionEnded"
+              class="border rounded p-1"
+            >
+              <option value="">Select result</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="deferred">Deferred</option>
+            </select>
+            <button
+              class="px-3 py-1 border rounded text-sm"
+              [disabled]="sessionEnded"
+            >Record Vote</button>
+          </div>
+        </div>
+
+        <!-- Tasks -->
+        <div>
+          <h4 class="font-medium">Assign Tasks</h4>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm">Description</label>
+              <input
+                [(ngModel)]="newTaskDesc[item.id]"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-1"
+                placeholder="Enter task description"
+              />
+            </div>
+            <div>
+              <label class="block text-sm">Assignee</label>
+              <select
+                [(ngModel)]="newTaskAssignee[item.id]"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-1"
+              >
+                <option value="">Select assignee</option>
+                <option *ngFor="let a of attendees" [value]="a.name">
+                  {{ a.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+          <button
+            class="mt-2 px-3 py-1 border rounded text-sm"
+            [disabled]="sessionEnded"
+            (click)="addTask(item.id)"
+          >Add Task</button>
+
+          <!-- NEW: table of tasks -->
+          <div *ngIf="item.tasks.length" class="mt-4 overflow-auto">
+            <table class="min-w-full table-auto border-collapse">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-2 text-left text-sm font-medium">Task</th>
+                  <th class="px-4 py-2 text-left text-sm font-medium">Assignee</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let t of item.tasks" class="border-t">
+                  <td class="px-4 py-2 text-sm">{{ t.description }}</td>
+                  <td class="px-4 py-2 text-sm">{{ t.assignee }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Docs -->
+        <div>
+          <h4 class="font-medium">Supporting Documents</h4>
+          <ng-container *ngIf="item.documents.length; else noDocs">
+            <div
+              *ngFor="let d of item.documents"
+              class="flex items-center gap-2 text-sm"
+            >
+              <lucide-icon name="FileText" class="h-4 w-4 text-gray-400"/>
+              <span>{{ d }}</span>
+              <button class="ml-auto">
+                <lucide-icon name="Download" class="h-4 w-4"/>
+              </button>
+            </div>
+          </ng-container>
+          <ng-template #noDocs>
+            <p class="text-gray-500">No documents attached</p>
+          </ng-template>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Back & Generate Footer -->
+  <div class="flex justify-between pt-6">
+    <button
+      [routerLink]="['/sessions', sessionId]"
+      class="px-4 py-2 border rounded text-sm"
+    >Back to Session</button>
+    <button
+      *ngIf="sessionEnded"
+      (click)="generateMinutes()"
+      class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm"
+    >
+      <lucide-icon name="FileText" class="h-4 w-4"/> Generate Minutes
+    </button>
+  </div>
+</div>

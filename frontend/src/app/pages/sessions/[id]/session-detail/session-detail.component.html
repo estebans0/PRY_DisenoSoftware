@@ -1,0 +1,307 @@
+<div class="container mx-auto py-6 space-y-6">
+
+  <!-- Title & Badges -->
+  <div class="flex items-center justify-between">
+    <div>
+      <div class="flex items-center gap-2">
+        <h1 class="text-3xl font-bold">Session #{{ session.number }}</h1>
+        <span
+          class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 dark:text-gray-100 rounded">
+          {{ session.type }}
+        </span>
+        <span
+          class="px-2 py-0.5 text-xs bg-blue-600 text-white rounded">
+          {{ session.status }}
+        </span>
+      </div>
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        Created by {{ session.createdBy }} on {{ session.createdAt }}
+      </p>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex items-center gap-2">
+      <button
+        *ngIf="session.status==='Scheduled'"
+        class="px-4 py-2 border rounded flex items-center gap-1 text-sm">
+        <lucide-icon name="Edit" class="h-4 w-4"></lucide-icon>Edit
+      </button>
+      <button
+        *ngIf="session.status==='Scheduled'"
+        class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm">
+        <lucide-icon name="Play" class="h-4 w-4"></lucide-icon>Start Session
+      </button>
+      <button
+        *ngIf="session.status==='Completed'"
+        class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm">
+        <lucide-icon name="FileText" class="h-4 w-4"></lucide-icon>View Minutes
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Info Cards -->
+  <div class="grid gap-6 md:grid-cols-3">
+    <!-- Date & Time -->
+    <div class="rounded-lg border bg-white dark:bg-gray-800 p-4">
+      <h3 class="font-semibold mb-2 dark:text-gray-100">Date &amp; Time</h3>
+      <div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <lucide-icon name="Calendar" class="h-4 w-4"></lucide-icon>
+        {{ session.date }}
+      </div>
+      <div class="flex items-center gap-2 text-gray-700 dark:text-gray-300 mt-1">
+        <lucide-icon name="Clock" class="h-4 w-4"></lucide-icon>
+        {{ session.time }}
+      </div>
+    </div>
+    <!-- Location -->
+    <div class="rounded-lg border bg-white dark:bg-gray-800 p-4">
+      <h3 class="font-semibold mb-2 dark:text-gray-100">Location</h3>
+      <div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <lucide-icon
+          [name]="session.modality==='In Person'? 'MapPin':'Video'"
+          class="h-4 w-4">
+        </lucide-icon>
+        {{ session.modality }}
+      </div>
+      <p class="mt-1 text-gray-600 dark:text-gray-400">{{ session.location }}</p>
+    </div>
+    <!-- Attendance -->
+    <div class="rounded-lg border bg-white dark:bg-gray-800 p-4">
+      <h3 class="font-semibold mb-2 dark:text-gray-100">Attendance</h3>
+      <div class="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+        <lucide-icon name="Users" class="h-4 w-4"></lucide-icon>
+        {{ confirmedCount }} of {{ attendees.length }} confirmed
+      </div>
+      <div class="flex items-center gap-2 text-gray-700 dark:text-gray-300 mt-1">
+        <lucide-icon name="AlertCircle" class="h-4 w-4"></lucide-icon>
+        Quorum status: {{ session.quorum }}
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="inline-flex space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+    <button
+      class="px-4 py-2 rounded-lg text-sm"
+      [ngClass]="isActive('overview')
+        ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+      (click)="activeTab='overview'">
+      Overview
+    </button>
+    <button
+      class="px-4 py-2 rounded-lg text-sm"
+      [ngClass]="isActive('agenda')
+        ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+      (click)="activeTab='agenda'">
+      Agenda
+    </button>
+    <button
+      class="px-4 py-2 rounded-lg text-sm"
+      [ngClass]="isActive('attendees')
+        ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+      (click)="activeTab='attendees'">
+      Attendees
+    </button>
+    <button
+      class="px-4 py-2 rounded-lg text-sm"
+      [ngClass]="isActive('documents')
+        ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+        : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+      (click)="activeTab='documents'">
+      Documents
+    </button>
+  </div>
+
+  <!-- === TABS CONTENT: switch to simple *ngIf === -->
+
+  <!-- OVERVIEW -->
+  <section *ngIf="activeTab==='overview'" class="space-y-4">
+    <div class="rounded-lg border bg-white dark:bg-gray-800 p-4">
+      <h2 class="font-semibold dark:text-gray-100">Session Overview</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mb-2">
+        Summary information about this board session
+      </p>
+
+      <!-- Description -->
+      <div class="space-y-4">
+        <div>
+          <h3 class="font-medium dark:text-gray-100">Description</h3>
+          <p class="text-gray-700 dark:text-gray-300">{{ session.description }}</p>
+        </div>
+        <hr class="border-gray-200 dark:border-gray-700">
+
+        <!-- Agenda Summary -->
+        <div>
+          <h3 class="font-medium dark:text-gray-100">Agenda Summary</h3>
+          <div class="grid grid-cols-2 gap-4 mt-2">
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Total Items</p>
+              <p class="text-lg font-medium dark:text-gray-100">{{ agenda.length }}</p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Estimated Duration</p>
+              <p class="text-lg font-medium dark:text-gray-100">{{ totalDuration }} minutes</p>
+            </div>
+          </div>
+          <div class="mt-4">
+            <h4 class="text-sm font-medium dark:text-gray-100">Key Topics</h4>
+            <ul class="list-disc pl-5 text-gray-700 dark:text-gray-300">
+              <li *ngFor="let item of agenda.slice(0,3)">{{ item.title }}</li>
+              <li *ngIf="agenda.length>3">And {{ agenda.length-3 }} more items</li>
+            </ul>
+          </div>
+        </div>
+        <hr class="border-gray-200 dark:border-gray-700">
+
+        <!-- Attendance Summary -->
+        <div>
+          <h3 class="font-medium dark:text-gray-100">Attendance Summary</h3>
+          <div class="grid grid-cols-3 gap-4 mt-2">
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Confirmed</p>
+              <p class="text-lg font-medium text-green-600 dark:text-green-400">
+                {{ confirmedCount }}
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Pending</p>
+              <p class="text-lg font-medium text-amber-600 dark:text-amber-400">
+                {{ pendingCount }}
+              </p>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500 dark:text-gray-400">Declined</p>
+              <p class="text-lg font-medium text-red-600 dark:text-red-400">
+                {{ declinedCount }}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <button
+            *ngIf="session.status==='Scheduled'"
+            class="px-4 py-2 border rounded text-sm flex items-center gap-1">
+            <lucide-icon name="Send" class="h-4 w-4"></lucide-icon>Send Reminder
+          </button>
+          <button
+            *ngIf="session.status==='Completed'"
+            class="px-4 py-2 border rounded text-sm flex items-center gap-1">
+            <lucide-icon name="FileText" class="h-4 w-4"></lucide-icon>View Minutes
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- AGENDA -->
+  <section *ngIf="activeTab==='agenda'" class="space-y-4">
+    <h2 class="text-2xl font-semibold dark:text-gray-100">Session Agenda</h2>
+    <div *ngFor="let item of agenda; let i=index"
+         class="rounded-lg border bg-white dark:bg-gray-800 p-4 space-y-2">
+      <div class="flex justify-between items-start">
+        <div>
+          <h3 class="font-medium dark:text-gray-100">{{ i+1 }}. {{ item.title }}</h3>
+          <div class="flex items-center gap-4 text-sm text-gray-500 dark:text-gray-400 mt-1">
+            <div class="flex items-center gap-1">
+              <lucide-icon name="Users" class="h-4 w-4"></lucide-icon>{{ item.presenter }}
+            </div>
+            <div class="flex items-center gap-1">
+              <lucide-icon name="Clock" class="h-4 w-4"></lucide-icon>{{ item.duration }} minutes
+            </div>
+          </div>
+        </div>
+        <span class="px-2 py-0.5 text-xs bg-gray-100 dark:bg-gray-700 rounded">
+          Item #{{ i+1 }}
+        </span>
+      </div>
+      <div *ngIf="item.documents.length"
+           class="rounded-md bg-gray-100 dark:bg-gray-700 p-3">
+        <h4 class="font-medium dark:text-gray-100 mb-1">Supporting Documents</h4>
+        <div class="space-y-1">
+          <div *ngFor="let doc of item.documents"
+               class="flex items-center gap-2 text-sm dark:text-gray-100">
+            <lucide-icon name="FileText" class="h-4 w-4"></lucide-icon>{{ doc }}
+            <button class="ml-auto">
+              <lucide-icon name="Download" class="h-4 w-4"></lucide-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <button class="px-4 py-2 border rounded text-sm flex items-center gap-1">
+      <lucide-icon name="Download" class="h-4 w-4"></lucide-icon>Download Agenda
+    </button>
+  </section>
+
+  <!-- ATTENDEES -->
+  <section *ngIf="activeTab==='attendees'">
+    <h2 class="text-2xl font-semibold dark:text-gray-100">Attendees</h2>
+    <div class="overflow-auto">
+      <table class="min-w-full table-auto border-collapse">
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th class="px-4 py-2 text-left">Name</th>
+            <th class="px-4 py-2 text-left">Position</th>
+            <th class="px-4 py-2 text-left">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let a of attendees" class="border-t dark:border-gray-700">
+            <td class="px-4 py-2">{{ a.name }}</td>
+            <td class="px-4 py-2">{{ a.position }}</td>
+            <td class="px-4 py-2">
+              <span class="inline-block px-2 py-0.5 text-xs rounded"
+                    [ngClass]="badgeClass(a.status)">
+                {{ a.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="mt-4 px-4 py-2 border rounded text-sm flex items-center gap-1">
+      <lucide-icon name="Send" class="h-4 w-4"></lucide-icon>Send Reminder to Pending
+    </button>
+  </section>
+
+  <!-- DOCUMENTS -->
+  <section *ngIf="activeTab==='documents'">
+    <h2 class="text-2xl font-semibold dark:text-gray-100">Documents</h2>
+    <div class="overflow-auto">
+      <table class="min-w-full table-auto border-collapse">
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th class="px-4 py-2 text-left">Name</th>
+            <th class="px-4 py-2 text-left">Size</th>
+            <th class="px-4 py-2 text-left">Uploaded By</th>
+            <th class="px-4 py-2 text-left">Date</th>
+            <th class="px-4 py-2 text-left">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let d of documents" class="border-t dark:border-gray-700">
+            <td class="px-4 py-2 flex items-center gap-2">
+              <lucide-icon name="FileText" class="h-4 w-4"></lucide-icon>{{ d.name }}
+            </td>
+            <td class="px-4 py-2">{{ d.size }}</td>
+            <td class="px-4 py-2">{{ d.uploadedBy }}</td>
+            <td class="px-4 py-2">{{ d.uploadedAt }}</td>
+            <td class="px-4 py-2">
+              <button>
+                <lucide-icon name="Download" class="h-4 w-4"></lucide-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <button class="mt-4 px-4 py-2 border rounded text-sm flex items-center gap-1">
+      <lucide-icon name="Download" class="h-4 w-4"></lucide-icon>Download All
+    </button>
+  </section>
+
+</div>

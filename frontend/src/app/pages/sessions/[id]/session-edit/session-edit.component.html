@@ -1,0 +1,520 @@
+<!-- src/app/pages/sessions/[id]/session-edit/session-edit.component.html -->
+<div class="container mx-auto py-6">
+
+  <!-- loading indicator -->
+  <div *ngIf="isLoading" class="text-center py-20">
+    <p class="text-gray-500 dark:text-gray-400">Loading session data…</p>
+  </div>
+
+  <!-- when loaded, show the form -->
+  <div *ngIf="!isLoading" class="space-y-6">
+
+    <!-- header + actions -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-3xl font-bold dark:text-gray-100">
+        Edit Session #{{ sessionData.number }}
+      </h1>
+      <div class="flex items-center gap-2">
+        <button
+          [routerLink]="['/sessions', sessionId]"
+          class="px-4 py-2 border rounded bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+        >
+          Cancel
+        </button>
+        <button
+          (click)="handleSubmit()"
+          class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+        >
+          <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+          Save
+        </button>
+        <button
+          (click)="handleSaveAndSend()"
+          class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+        >
+          <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+          Save &amp; Send Notice
+        </button>
+      </div>
+    </div>
+
+    <!-- info banner -->
+    <div class="flex items-start gap-2 p-4 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+      <lucide-icon name="AlertCircle" class="h-5 w-5 text-gray-500 dark:text-gray-400"></lucide-icon>
+      <div>
+        <p class="font-medium dark:text-gray-100">Editing Session</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          You are editing an existing session. Changes will be saved when you click Save.
+        </p>
+      </div>
+    </div>
+
+    <!-- tabs nav -->
+    <div class="inline-flex space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="isTab('details')
+          ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+        (click)="activeTab='details'"
+      >
+        Session Details
+      </button>
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="isTab('attendees')
+          ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+        (click)="activeTab='attendees'"
+      >
+        Attendees
+      </button>
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="isTab('agenda')
+          ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+        (click)="activeTab='agenda'"
+      >
+        Agenda
+      </button>
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="isTab('documents')
+          ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+        (click)="activeTab='documents'"
+      >
+        Documents
+      </button>
+    </div>
+
+    <!-- tab content -->
+    <div [ngSwitch]="activeTab" class="space-y-6">
+
+      <!-- DETAILS -->
+      <section *ngSwitchCase="'details'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-4">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Session Information</h2>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label class="block text-sm dark:text-gray-100">Session Number</label>
+              <input
+                [(ngModel)]="sessionData.number"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              />
+            </div>
+            <div class="space-y-1">
+              <label class="block text-sm dark:text-gray-100">Session Type</label>
+              <select
+                [(ngModel)]="sessionData.type"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              >
+                <option value="ordinary">Ordinary</option>
+                <option value="extraordinary">Extraordinary</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1">
+              <label class="block text-sm dark:text-gray-100">Date</label>
+              <input
+                type="date"
+                [(ngModel)]="date"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              />
+            </div>
+            <div class="space-y-1">
+              <label class="block text-sm dark:text-gray-100">Time</label>
+              <select
+                [(ngModel)]="sessionData.time"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              >
+                <option value="09:00">09:00 AM</option>
+                <option value="09:30">09:30 AM</option>
+                <option value="10:00">10:00 AM</option>
+                <option value="10:30">10:30 AM</option>
+                <option value="11:00">11:00 AM</option>
+                <option value="11:30">11:30 AM</option>
+                <option value="12:00">12:00 PM</option>
+                <option value="13:00">01:00 PM</option>
+                <option value="14:00">02:00 PM</option>
+                <option value="15:00">03:00 PM</option>
+                <option value="16:00">04:00 PM</option>
+                <option value="17:00">05:00 PM</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="space-y-1">
+            <label class="block text-sm dark:text-gray-100">Modality</label>
+            <select
+              [(ngModel)]="sessionData.modality"
+              class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            >
+              <option value="in-person">In Person</option>
+              <option value="virtual">Virtual</option>
+              <option value="hybrid">Hybrid</option>
+            </select>
+          </div>
+
+          <div class="space-y-1">
+            <label class="block text-sm dark:text-gray-100">Location / Meeting Link</label>
+            <input
+              [(ngModel)]="sessionData.location"
+              class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            />
+          </div>
+
+          <div class="space-y-1">
+            <label class="block text-sm dark:text-gray-100">Description (Optional)</label>
+            <textarea
+              rows="4"
+              [(ngModel)]="sessionData.description"
+              class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            ></textarea>
+          </div>
+
+          <div class="flex justify-end">
+            <button
+              (click)="activeTab='attendees'"
+              class="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Next: Attendees
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ATTENDEES -->
+      <section *ngSwitchCase="'attendees'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-4">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Session Attendees</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            {{ selectedMembers.length }} of {{ members.length }} selected
+          </p>
+
+          <div class="flex gap-2 mb-4">
+            <button
+              (click)="deselectAll()"
+              class="px-3 py-1 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+            >
+              Deselect All
+            </button>
+            <button
+              (click)="selectAll()"
+              class="px-3 py-1 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+            >
+              Select All
+            </button>
+          </div>
+
+          <div class="border rounded divide-y dark:divide-gray-700">
+            <div
+              *ngFor="let m of members"
+              class="flex items-center gap-2 p-4 bg-white dark:bg-gray-800"
+            >
+              <input
+                type="checkbox"
+                [checked]="selectedMembers.includes(m.id)"
+                (change)="toggleMember(m.id)"
+                class="h-4 w-4 text-blue-600"
+              />
+              <div>
+                <div class="font-medium dark:text-gray-100">{{ m.name }}</div>
+                <div class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ m.position }} • {{ m.email }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Guests -->
+          <div class="pt-4 space-y-2">
+            <h3 class="font-semibold text-md dark:text-gray-100">Guests</h3>
+            <ng-container *ngIf="guests.length; else noGuests">
+              <div
+                *ngFor="let g of guests"
+                class="p-3 flex items-center gap-2 bg-white dark:bg-gray-800 border dark:border-gray-700 rounded"
+              >
+                <div>
+                  <div class="font-medium dark:text-gray-100">{{ g.name || 'Guest' }}</div>
+                  <div class="text-sm text-gray-600 dark:text-gray-400">{{ g.email }}</div>
+                </div>
+                <button
+                  (click)="removeGuest(g.id)"
+                  class="ml-auto text-red-500 hover:text-red-700"
+                >
+                  <lucide-icon name="Trash2" class="h-5 w-5"></lucide-icon>
+                </button>
+              </div>
+            </ng-container>
+            <ng-template #noGuests>
+              <p class="text-sm text-gray-500 dark:text-gray-400">No guests added</p>
+            </ng-template>
+            <button
+              (click)="openGuestModal()"
+              class="mt-2 px-3 py-1 border rounded flex items-center gap-1 text-sm text-gray-700 dark:text-gray-300 dark:border-gray-600"
+            >
+              <lucide-icon name="Plus" class="h-4 w-4"></lucide-icon>
+              Add Guest
+            </button>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              (click)="activeTab='details'"
+              class="px-4 py-2 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+            >
+              Previous: Details
+            </button>
+            <button
+              (click)="activeTab='agenda'"
+              class="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Next: Agenda
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- AGENDA -->
+      <section *ngSwitchCase="'agenda'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-6">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Session Agenda</h2>
+
+          <ng-container *ngFor="let item of agendaItems; let i = index">
+            <div class="border rounded p-4 space-y-4 bg-white dark:bg-gray-800 dark:border-gray-700">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium dark:text-gray-100">Agenda Item #{{ i + 1 }}</h3>
+                <button
+                  *ngIf="agendaItems.length > 1"
+                  (click)="removeAgendaItem(item.id)"
+                  aria-label="Remove agenda item"
+                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                >
+                  <lucide-icon name="Trash2" class="h-5 w-5 text-gray-500 dark:text-gray-400 hover:text-red-600"></lucide-icon>
+                </button>
+              </div>
+
+              <div class="space-y-2">
+                <label class="block text-sm dark:text-gray-100">Title</label>
+                <input
+                  [(ngModel)]="item.title"
+                  class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                />
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <label class="block text-sm dark:text-gray-100">Presenter</label>
+                  <select
+                    [(ngModel)]="item.presenter"
+                    class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  >
+                    <option *ngFor="let m of members" [value]="m.name">{{ m.name }}</option>
+                  </select>
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm dark:text-gray-100">Duration (minutes)</label>
+                  <select
+                    [(ngModel)]="item.duration"
+                    class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  >
+                    <option *ngFor="let t of durations" [value]="t">{{ t }} minutes</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <label class="block font-medium dark:text-gray-100">Supporting Documents</label>
+                <ng-container *ngIf="item.documents.length; else noDocs">
+                  <div
+                    *ngFor="let doc of item.documents; let di = index"
+                    class="flex items-center border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600"
+                  >
+                    <span class="flex-1 dark:text-gray-100">{{ doc }}</span>
+                    <button
+                      (click)="removeAgendaItemDoc(item.id, di)"
+                      aria-label="Remove document"
+                      class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    >
+                      <lucide-icon name="XCircle" class="h-5 w-5 text-red-600"></lucide-icon>
+                    </button>
+                  </div>
+                </ng-container>
+                <ng-template #noDocs>
+                  <div class="flex items-center gap-2">
+                    <span class="text-sm text-gray-500 dark:text-gray-400">No documents attached</span>
+                  </div>
+                </ng-template>
+
+                <button
+                  type="button"
+                  class="mt-2 text-blue-600 hover:underline text-sm dark:text-blue-400"
+                >
+                  <lucide-icon name="FileUp" class="h-4 w-4 inline-block"></lucide-icon>
+                  Upload More Documents
+                </button>
+              </div>
+            </div>
+          </ng-container>
+
+          <button
+            (click)="addAgendaItem()"
+            class="flex items-center gap-1 text-blue-600 hover:text-blue-500 dark:text-blue-400"
+          >
+            <lucide-icon name="Plus" class="h-5 w-5"></lucide-icon>
+            Add Agenda Item
+          </button>
+
+          <div class="flex justify-between">
+            <button
+              (click)="activeTab='attendees'"
+              class="px-4 py-2 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+            >
+              Previous: Attendees
+            </button>
+            <button
+              (click)="activeTab='documents'"
+              class="px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Next: Documents
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- DOCUMENTS -->
+      <section *ngSwitchCase="'documents'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-6">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Supporting Documents</h2>
+
+          <div class="border-dashed border-2 border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center bg-white dark:bg-gray-800">
+            <lucide-icon name="FileUp" class="h-10 w-10 text-gray-500 dark:text-gray-400"></lucide-icon>
+            <p class="mt-2 dark:text-gray-100">Upload Documents</p>
+            <p class="text-gray-500 text-sm dark:text-gray-400">Drag &amp; drop or click to browse</p>
+            <button class="mt-4 px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1">
+              <lucide-icon name="FileUp" class="h-4 w-4"></lucide-icon>
+              Browse Files
+            </button>
+          </div>
+
+          <div class="space-y-2">
+            <h3 class="font-medium dark:text-gray-100">Uploaded Documents</h3>
+            <div class="border rounded divide-y dark:divide-gray-700">
+              <div
+                *ngFor="let doc of uploadedDocs; let i = index"
+                class="flex items-center justify-between p-3 bg-white dark:bg-gray-800"
+              >
+                <div class="flex items-center gap-2">
+                  <lucide-icon name="FileText" class="h-5 w-5 text-gray-500 dark:text-gray-400"></lucide-icon>
+                  <div>
+                    <p class="font-medium dark:text-gray-100">{{ doc.name }}</p>
+                    <p class="text-xs text-gray-600 dark:text-gray-400">
+                      {{ doc.size }} • Uploaded by {{ doc.by }} on {{ doc.uploadedAt }}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  (click)="removeUploadedDoc(i)"
+                  class="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+                  aria-label="Remove document"
+                >
+                  &times;
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-between">
+            <button
+              (click)="activeTab='agenda'"
+              class="px-4 py-2 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+            >
+              Previous: Agenda
+            </button>
+            <div class="flex gap-2">
+              <button
+                [routerLink]="['/sessions', sessionId]"
+                class="px-4 py-2 border rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+              >
+                Cancel
+              </button>
+              <button
+                (click)="handleSubmit()"
+                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+              >
+                <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+                Save
+              </button>
+              <button
+                (click)="handleSaveAndSend()"
+                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+              >
+                <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+                Save &amp; Send Notice
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Add Guest Modal -->
+      <div
+        *ngIf="showGuestModal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-50"
+      >
+        <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-sm p-6 space-y-4 relative">
+          <button
+            class="absolute top-3 right-3 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200"
+            (click)="closeGuestModal()"
+          >
+            <lucide-icon name="XCircle" class="h-6 w-6"></lucide-icon>
+          </button>
+          <h3 class="text-lg font-semibold dark:text-gray-100">Add Guest</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Add a guest who is not a board member to this session.
+          </p>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium dark:text-gray-100">Name (Optional)</label>
+              <input
+                [(ngModel)]="newGuestName"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                placeholder="Guest name"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium dark:text-gray-100">Email Address</label>
+              <input
+                [(ngModel)]="newGuestEmail"
+                type="email"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                placeholder="guest@example.com"
+              />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 pt-4">
+            <button
+              class="px-4 py-2 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+              (click)="closeGuestModal()"
+            >
+              Cancel
+            </button>
+            <button
+              class="px-4 py-2 bg-blue-600 text-white rounded"
+              [disabled]="!newGuestEmail.trim()"
+              (click)="addGuest()"
+            >
+              Add Guest
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>

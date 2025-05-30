@@ -1,0 +1,263 @@
+<div class="container mx-auto py-6 space-y-6">
+
+  <!-- Header & Actions -->
+  <div class="flex items-center justify-between">
+    <div class="space-y-1">
+      <div class="flex items-center gap-2">
+        <h1 class="text-3xl font-bold">Meeting Minutes</h1>
+        <span class="px-2 py-0.5 text-xs bg-gray-100 rounded">
+          Session #{{ session.number }}
+        </span>
+        <span class="px-2 py-0.5 text-xs bg-green-500 text-white rounded">
+          {{ session.status }}
+        </span>
+      </div>
+      <p class="text-gray-500">
+        {{ session.date }} • {{ session.time }} to {{ session.endTime }}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button (click)="handlePrint()"
+              class="px-4 py-2 border rounded flex items-center gap-1 text-sm">
+        <lucide-icon name="Printer" class="h-4 w-4"></lucide-icon>Print
+      </button>
+      <button (click)="handleDownloadPDF()"
+              class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm">
+        <lucide-icon name="Download" class="h-4 w-4"></lucide-icon>Download PDF
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="inline-flex space-x-2 bg-gray-100 rounded-lg p-1">
+    <button class="px-4 py-2 rounded-lg text-sm"
+            [ngClass]="activeTab==='preview' ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'"
+            (click)="setActiveTab('preview')">
+      Preview
+    </button>
+    <button class="px-4 py-2 rounded-lg text-sm"
+            [ngClass]="activeTab==='edit' ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'"
+            (click)="setActiveTab('edit')">
+      Edit
+    </button>
+    <button class="px-4 py-2 rounded-lg text-sm"
+            [ngClass]="activeTab==='settings' ? 'bg-white text-gray-900' : 'text-gray-600 hover:text-gray-900'"
+            (click)="setActiveTab('settings')">
+      Settings
+    </button>
+  </div>
+
+  <!-- PREVIEW -->
+  <section *ngIf="activeTab==='preview'">
+    <!-- added `printable` here -->
+    <div class="printable border rounded-lg bg-white p-6 space-y-6">
+
+      <!-- Title Block -->
+      <div class="text-center space-y-2">
+        <h1 class="text-2xl font-bold">MINUTES OF MEETING</h1>
+        <h2 class="text-xl">Board of Directors</h2>
+        <p>Session #{{ session.number }} – {{ session.type }}</p>
+        <p>{{ session.date }}</p>
+      </div>
+
+      <!-- 1. MEETING DETAILS -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-bold border-b pb-1">1. MEETING DETAILS</h3>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <p class="font-medium">Date and Time:</p>
+            <p>{{ session.date }}, {{ session.time }} to {{ session.endTime }}</p>
+          </div>
+          <div>
+            <p class="font-medium">Location:</p>
+            <p>
+              <lucide-icon name="MapPin" class="inline h-4 w-4"></lucide-icon>
+              {{ session.location }} ({{ session.modality }})
+            </p>
+          </div>
+          <div>
+            <p class="font-medium">Quorum:</p>
+            <p>{{ session.quorum }} ({{ presentCount }} of {{ attendees.length }} present)</p>
+          </div>
+          <div>
+            <p class="font-medium">Meeting Duration:</p>
+            <p>{{ totalDuration }} minutes</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. ATTENDANCE -->
+      <div class="space-y-2">
+        <h3 class="text-lg font-bold border-b pb-1">2. ATTENDANCE</h3>
+        <p class="font-medium">Present:</p>
+        <p>{{ presentList }}</p>
+        <p class="font-medium">Absent:</p>
+        <p>{{ absentList }}</p>
+      </div>
+
+      <!-- 3. AGENDA AND DISCUSSIONS -->
+      <div class="space-y-6">
+        <h3 class="text-lg font-bold border-b pb-1">3. AGENDA AND DISCUSSIONS</h3>
+        <ng-container *ngFor="let item of agenda; let i = index">
+          <div class="space-y-2">
+            <h4 class="font-medium">3.{{ i+1 }}. {{ item.title }}</h4>
+            <p class="text-sm text-gray-600">
+              Presenter: {{ item.presenter }} • Duration: {{ item.actualDuration }} minutes
+            </p>
+            <div class="pl-4 space-y-2">
+              <p class="font-medium">Discussion:</p>
+              <p>{{ item.notes }}</p>
+
+              <ng-container *ngIf="item.voting.result!=='No Vote Required'">
+                <p class="font-medium">Voting Results:</p>
+                <p>
+                  In Favor: {{ item.voting.inFavor }},
+                  Against: {{ item.voting.against }},
+                  Abstain: {{ item.voting.abstain }}
+                </p>
+                <p>
+                  <span class="font-medium">Decision:</span>
+                  <span
+                    [class.text-green-600]="item.voting.result.startsWith('Approved')"
+                    [class.text-red-600]="item.voting.result==='Rejected'">
+                    {{ item.voting.result }}
+                  </span>
+                </p>
+              </ng-container>
+
+              <ng-container *ngIf="item.tasks.length">
+                <p class="font-medium">Action Items:</p>
+                <ul class="list-disc pl-5 space-y-1">
+                  <li *ngFor="let t of item.tasks">
+                    {{ t.description }} – Assigned to: {{ t.assignee }}, Due: {{ t.dueDate }}
+                  </li>
+                </ul>
+              </ng-container>
+            </div>
+          </div>
+          <hr *ngIf="i < agenda.length - 1" class="my-4 border-gray-200"/>
+        </ng-container>
+      </div>
+
+      <!-- 4. NEXT MEETING -->
+      <div class="space-y-2">
+        <h3 class="text-lg font-bold border-b pb-1">4. NEXT MEETING</h3>
+        <p>The next meeting is scheduled for May 31, 2025 at 10:00 AM.</p>
+      </div>
+
+      <!-- Signatures -->
+      <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 pt-8">
+        <div class="space-y-2">
+          <p class="font-medium">Minutes Prepared By:</p>
+          <div class="h-12 border-b"></div>
+          <p>Robert Johnson, Secretary</p>
+          <p>Date: {{ today | date:'MM/dd/yyyy' }}</p>
+        </div>
+        <div class="space-y-2">
+          <p class="font-medium">Approved By:</p>
+          <div class="h-12 border-b"></div>
+          <p>John Doe, Chairperson</p>
+          <p>Date: ____________________</p>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- EDIT -->
+  <section *ngIf="activeTab==='edit'">
+    <div class="border rounded-lg bg-white p-6 space-y-4">
+      <h2 class="text-xl font-semibold">Edit Minutes</h2>
+      <p class="text-gray-600">Make changes to the generated minutes before finalizing.</p>
+      <textarea
+        class="w-full h-[500px] font-mono text-sm border rounded p-2"
+        [(ngModel)]="minutesContent">
+      </textarea>
+      <div class="flex justify-between">
+        <button class="px-4 py-2 border rounded text-sm" (click)="resetToOriginal()">
+          Reset to Original
+        </button>
+        <button class="px-4 py-2 bg-blue-600 text-white rounded text-sm" (click)="saveChanges()">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section *ngIf="activeTab==='settings'">
+    <div class="border rounded-lg bg-white p-6 space-y-6">
+      <h2 class="text-xl font-semibold">Minutes Settings</h2>
+      <p class="text-gray-600">Configure the format and content of the minutes.</p>
+
+      <!-- Header Info -->
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium">Organization Name</label>
+          <input class="w-full border rounded p-2" [(ngModel)]="organizationName"/>
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Document Title</label>
+          <input class="w-full border rounded p-2" [(ngModel)]="documentTitle"/>
+        </div>
+      </div>
+
+      <hr class="border-gray-200"/>
+
+      <!-- Content Sections -->
+      <div class="space-y-2">
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" class="h-4 w-4" [(ngModel)]="includeMeetingDetails"/>
+          <span>Include Meeting Details</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" class="h-4 w-4" [(ngModel)]="includeAttendance"/>
+          <span>Include Attendance</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" class="h-4 w-4" [(ngModel)]="includeAgenda"/>
+          <span>Include Agenda and Discussions</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" class="h-4 w-4" [(ngModel)]="includeNextMeeting"/>
+          <span>Include Next Meeting Information</span>
+        </label>
+        <label class="flex items-center space-x-2">
+          <input type="checkbox" class="h-4 w-4" [(ngModel)]="includeSignatures"/>
+          <span>Include Signature Lines</span>
+        </label>
+      </div>
+
+      <hr class="border-gray-200"/>
+
+      <!-- PDF Options -->
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-medium">Paper Size</label>
+          <select class="w-full border rounded p-2" [(ngModel)]="paperSize">
+            <option value="letter">Letter</option>
+            <option value="a4">A4</option>
+            <option value="legal">Legal</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium">Orientation</label>
+          <select class="w-full border rounded p-2" [(ngModel)]="orientation">
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Landscape</option>
+          </select>
+        </div>
+      </div>
+
+      <hr class="border-gray-200"/>
+
+      <div class="flex justify-end">
+        <button class="px-4 py-2 bg-blue-600 text-white rounded text-sm"
+                (click)="applySettings()">
+          Apply Settings
+        </button>
+      </div>
+    </div>
+  </section>
+
+</div>

@@ -1,0 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ----------------------------------------
+   Global light & dark background + text
+   ---------------------------------------- */
+/* Default (light) */
+html {
+  @apply bg-white text-gray-900;
+}
+
+/* When <html class="dark"> */
+html.dark {
+  @apply bg-gray-900 text-gray-100;
+}
+
+/* Ensure body inherits and fills the screen */
+body {
+  @apply min-h-screen;
+}
+
+@media print {
+  /* hide everything by default */
+  body * {
+    visibility: hidden;
+  }
+  /* show only the printable card and its contents */
+  .printable, 
+  .printable * {
+    visibility: visible;
+  }
+  /* make sure it fills the page */
+  .printable {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+}

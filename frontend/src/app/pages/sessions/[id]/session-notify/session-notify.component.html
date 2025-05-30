@@ -1,0 +1,259 @@
+<!-- src/app/pages/sessions/[id]/session-notify/session-notify.component.html -->
+<div class="container mx-auto py-6 space-y-6">
+
+  <!-- Header & Actions -->
+  <div class="flex items-center justify-between">
+    <div class="space-y-1">
+      <h1 class="text-3xl font-bold">Send Meeting Notice</h1>
+      <p class="text-gray-500 dark:text-gray-400">
+        Session #{{ session.number }} — {{ session.date }}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button
+        [routerLink]="['/sessions', session.id]"
+        class="px-4 py-2 border rounded bg-white hover:bg-gray-50
+               dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
+      >
+        Cancel
+      </button>
+      <button
+        (click)="handleSendNotification()"
+        class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+      >
+        <lucide-icon name="Send" class="h-4 w-4" />
+        Send Notice
+      </button>
+    </div>
+  </div>
+
+  <div class="grid gap-6 md:grid-cols-2">
+
+    <!-- LEFT COLUMN -->
+    <div class="space-y-6">
+
+      <!-- Recipients -->
+      <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700">
+        <div class="p-4 border-b dark:border-gray-700">
+          <h2 class="text-lg font-semibold dark:text-gray-100">Recipients</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Select members & guests to notify</p>
+        </div>
+        <div class="p-4 space-y-4">
+
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-500 dark:text-gray-400">
+              {{ selectedRecipients.length + selectedGuests.length }}
+              of {{ attendees.length + guests.length }} selected
+            </div>
+            <div class="flex gap-2">
+              <button class="px-2 py-1 border rounded text-sm" (click)="selectAll()">All</button>
+              <button class="px-2 py-1 border rounded text-sm" (click)="selectPending()">Pending</button>
+              <button class="px-2 py-1 border rounded text-sm" (click)="selectNone()">None</button>
+            </div>
+          </div>
+
+          <!-- Attendees List -->
+          <div class="border rounded divide-y dark:divide-gray-700">
+            <div *ngFor="let a of attendees"
+                 class="flex items-center justify-between p-3 bg-white dark:bg-gray-800"
+            >
+              <label class="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  [checked]="selectedRecipients.includes(a.id)"
+                  (change)="toggleRecipient(a.id)"
+                  class="h-4 w-4 text-blue-600"
+                />
+                <div>
+                  <div class="font-medium dark:text-gray-100">{{ a.name }}</div>
+                  <div class="text-sm text-gray-500 dark:text-gray-400">{{ a.email }}</div>
+                </div>
+              </label>
+              <span
+                class="px-2 py-0.5 text-xs rounded-full"
+                [ngClass]="{
+                  'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100': a.status==='Confirmed',
+                  'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-100': a.status==='Pending',
+                  'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100': a.status==='Declined'
+                }"
+              >
+                {{ a.status }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Guests List -->
+          <ng-container *ngIf="guests.length">
+            <div class="mt-4 text-sm font-medium dark:text-gray-100">Guests</div>
+            <div class="border rounded divide-y dark:divide-gray-700">
+              <div *ngFor="let g of guests"
+                   class="flex items-center justify-between p-3 bg-white dark:bg-gray-800"
+              >
+                <label class="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    [checked]="selectedGuests.includes(g.id)"
+                    (change)="toggleGuest(g.id)"
+                    class="h-4 w-4 text-blue-600"
+                  />
+                  <div>
+                    <div class="font-medium dark:text-gray-100">{{ g.name || 'Guest' }}</div>
+                    <div class="text-sm text-gray-500 dark:text-gray-400">{{ g.email }}</div>
+                  </div>
+                </label>
+                <span class="px-2 py-0.5 text-xs rounded-full
+                             bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                  Guest
+                </span>
+              </div>
+            </div>
+          </ng-container>
+
+        </div>
+      </div>
+
+      <!-- Attachments -->
+      <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700">
+        <div class="p-4 border-b dark:border-gray-700">
+          <h2 class="text-lg font-semibold dark:text-gray-100">Attachments</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">Select documents to include</p>
+        </div>
+        <div class="p-4 space-y-4">
+          <label class="flex items-center gap-2">
+            <input type="checkbox" [(ngModel)]="includeAgenda" class="h-4 w-4 text-blue-600" />
+            <span class="dark:text-gray-100">Include Agenda</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" [(ngModel)]="includeDocuments" class="h-4 w-4 text-blue-600" />
+            <span class="dark:text-gray-100">Include Supporting Documents</span>
+          </label>
+          <label class="flex items-center gap-2">
+            <input type="checkbox" [(ngModel)]="includeAbsenceForm" class="h-4 w-4 text-blue-600" />
+            <span class="dark:text-gray-100">Include Absence Justification Form</span>
+          </label>
+
+          <div *ngIf="includeDocuments" class="mt-4 border rounded p-4">
+            <h3 class="font-medium dark:text-gray-100 mb-2">Documents to Attach</h3>
+            <div class="space-y-2">
+              <label *ngFor="let doc of documents" class="flex items-center gap-2">
+                <input type="checkbox" checked class="h-4 w-4 text-blue-600" />
+                <span class="text-sm dark:text-gray-100">{{ doc.name }} ({{ doc.size }})</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="space-y-6">
+
+      <!-- Session Information -->
+      <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-4 space-y-2">
+        <h2 class="text-lg font-semibold dark:text-gray-100">Session Information</h2>
+        <div class="space-y-2">
+          <div class="flex items-center gap-2 dark:text-gray-100">
+            <lucide-icon name="Calendar" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
+            <strong>Date:</strong> {{ session.date }}
+          </div>
+          <div class="flex items-center gap-2 dark:text-gray-100">
+            <lucide-icon name="Clock" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
+            <strong>Time:</strong> {{ session.time }}
+          </div>
+          <div class="flex items-center gap-2 dark:text-gray-100">
+            <ng-container *ngIf="session.modality==='In Person'; else vidIcon">
+              <lucide-icon name="MapPin" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
+            </ng-container>
+            <ng-template #vidIcon>
+              <lucide-icon name="Video" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
+            </ng-template>
+            <strong>Location:</strong> {{ session.location }} ({{ session.modality }})
+          </div>
+          <div class="flex items-center gap-2 dark:text-gray-100">
+            <lucide-icon name="FileText" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
+            <strong>Type:</strong> {{ session.type }} Session #{{ session.number }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Email Preview -->
+      <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-4 space-y-4">
+        <h2 class="text-lg font-semibold dark:text-gray-100">Email Preview</h2>
+        <!-- tabs nav -->
+        <div class="inline-flex space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <button
+            class="px-4 py-2 rounded-lg text-sm"
+            [ngClass]="activeTab==='members'
+              ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+              : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+            (click)="activeTab='members'"
+          >
+            Members
+          </button>
+          <button
+            class="px-4 py-2 rounded-lg text-sm"
+            [ngClass]="activeTab==='guests'
+              ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+              : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'"
+            (click)="activeTab='guests'"
+          >
+            Guests
+          </button>
+        </div>
+
+        <ng-container *ngIf="activeTab==='members'">
+          <div class="space-y-2">
+            <label class="block text-sm dark:text-gray-100">Subject (Members)</label>
+            <input
+              [value]="emailSubject"
+              readonly
+              class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            />
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm dark:text-gray-100">Body (Members)</label>
+            <textarea
+              readonly
+              [value]="memberEmailBody"
+              class="w-full h-48 font-mono text-sm border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            ></textarea>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="activeTab==='guests'">
+          <div class="space-y-2">
+            <label class="block text-sm dark:text-gray-100">Subject (Guests)</label>
+            <input
+              [value]="'Guest Invitation: Board Session #' + session.number + ' — ' + session.date"
+              readonly
+              class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            />
+          </div>
+          <div class="space-y-2">
+            <label class="block text-sm dark:text-gray-100">Body (Guests)</label>
+            <textarea
+              readonly
+              [value]="guestEmailBody"
+              class="w-full h-48 font-mono text-sm border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            ></textarea>
+          </div>
+        </ng-container>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- info banner -->
+  <div class="flex items-start gap-2 p-4 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+    <lucide-icon name="AlertCircle" class="h-5 w-5 text-gray-500 dark:text-gray-400"></lucide-icon>
+    <div>
+      <p class="font-medium dark:text-gray-100">Important</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400">
+        This will send notifications to {{ selectedRecipients.length }} members and {{ selectedGuests.length }} guests.  
+      Please review before sending.
+      </p>
+    </div>
+  </div>
+
+</div>

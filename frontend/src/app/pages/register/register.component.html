@@ -1,0 +1,120 @@
+<div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+  <div class="w-full max-w-md bg-white shadow rounded-lg overflow-hidden">
+    <div class="px-6 py-4">
+      <h2 class="text-2xl font-bold mb-1">Create an account</h2>
+      <p class="text-gray-600 mb-4">Enter your information to create an account</p>
+
+      <form (ngSubmit)="onSubmit()" #regForm="ngForm">
+        <!-- First & Last Name -->
+        <div class="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="firstName" class="block text-sm font-medium mb-1">First name</label>
+            <input
+              id="firstName"
+              name="firstName"
+              [(ngModel)]="form.firstName"
+              required
+              class="w-full border px-3 py-2 rounded"
+            />
+            <div *ngIf="submitted && !form.firstName"
+                 class="text-red-500 text-sm mt-1">
+              First name is required
+            </div>
+          </div>
+          <div>
+            <label for="lastName" class="block text-sm font-medium mb-1">Last name</label>
+            <input
+              id="lastName"
+              name="lastName"
+              [(ngModel)]="form.lastName"
+              required
+              class="w-full border px-3 py-2 rounded"
+            />
+            <div *ngIf="submitted && !form.lastName"
+                 class="text-red-500 text-sm mt-1">
+              Last name is required
+            </div>
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="mb-4">
+          <label for="email" class="block text-sm font-medium mb-1">Email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            [(ngModel)]="form.email"
+            required
+            class="w-full border px-3 py-2 rounded"
+          />
+          <div *ngIf="submitted && !form.email"
+               class="text-red-500 text-sm mt-1">
+            Email is required
+          </div>
+        </div>
+
+        <!-- Password -->
+        <div class="mb-4 relative">
+          <label for="password" class="block text-sm font-medium mb-1">Password</label>
+          <input
+            id="password"
+            name="password"
+            [type]="showPassword ? 'text' : 'password'"
+            [(ngModel)]="form.password"
+            required
+            minlength="8"
+            class="w-full border px-3 py-2 rounded pr-10"
+          />
+          <button type="button"
+                  class="absolute right-2 top-2"
+                  (click)="showPassword = !showPassword">
+            <lucide-icon [name]="showPassword ? 'eyeOff' : 'eye'"
+                         class="h-5 w-5 text-gray-500">
+            </lucide-icon>
+          </button>
+          <div *ngIf="submitted && form.password.length < 8"
+               class="text-red-500 text-sm mt-1">
+            Password must be at least 8 characters
+          </div>
+        </div>
+
+        <!-- Confirm Password -->
+        <div class="mb-4 relative">
+          <label for="confirmPassword" class="block text-sm font-medium mb-1">Confirm password</label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            [type]="showConfirm ? 'text' : 'password'"
+            [(ngModel)]="form.confirmPassword"
+            required
+            class="w-full border px-3 py-2 rounded pr-10"
+          />
+          <button type="button"
+                  class="absolute right-2 top-2"
+                  (click)="showConfirm = !showConfirm">
+            <lucide-icon [name]="showConfirm ? 'eyeOff' : 'eye'"
+                         class="h-5 w-5 text-gray-500">
+            </lucide-icon>
+          </button>
+          <div *ngIf="submitted && form.password !== form.confirmPassword"
+               class="text-red-500 text-sm mt-1">
+            Passwords do not match
+          </div>
+        </div>
+
+        <button
+          type="submit"
+          class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition"
+        >
+          Create account
+        </button>
+      </form>
+
+      <p class="mt-4 text-center text-sm text-gray-600">
+        Already have an account?
+        <a routerLink="/login" class="text-blue-600 hover:underline">Log in</a>
+      </p>
+    </div>
+  </div>
+</div>
