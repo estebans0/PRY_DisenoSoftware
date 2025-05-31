@@ -1,0 +1,9 @@
+<!-- src/app/pages/sessions/session-list/session-list.component.html -->
+<div *ngIf="loading">Loading sessions…</div>
+<ul *ngIf="!loading">
+  <li *ngFor="let s of sessions">
+    <a [routerLink]="['/sessions', s._id]">
+      Session #{{ s.number }} • {{ s.date }} • {{ s.type }}
+    </a>
+  </li>
+</ul>

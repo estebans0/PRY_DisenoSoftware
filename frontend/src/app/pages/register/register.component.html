@@ -1,3 +1,4 @@
+<!-- frontend/src/app/pages/register/register.component.html -->
 <div class="flex min-h-screen items-center justify-center bg-gray-50 p-4">
   <div class="w-full max-w-md bg-white shadow rounded-lg overflow-hidden">
     <div class="px-6 py-4">
@@ -70,8 +71,7 @@
                   class="absolute right-2 top-2"
                   (click)="showPassword = !showPassword">
             <lucide-icon [name]="showPassword ? 'eyeOff' : 'eye'"
-                         class="h-5 w-5 text-gray-500">
-            </lucide-icon>
+                         class="h-5 w-5 text-gray-500"></lucide-icon>
           </button>
           <div *ngIf="submitted && form.password.length < 8"
                class="text-red-500 text-sm mt-1">
@@ -94,8 +94,7 @@
                   class="absolute right-2 top-2"
                   (click)="showConfirm = !showConfirm">
             <lucide-icon [name]="showConfirm ? 'eyeOff' : 'eye'"
-                         class="h-5 w-5 text-gray-500">
-            </lucide-icon>
+                         class="h-5 w-5 text-gray-500"></lucide-icon>
           </button>
           <div *ngIf="submitted && form.password !== form.confirmPassword"
                class="text-red-500 text-sm mt-1">
@@ -109,6 +108,11 @@
         >
           Create account
         </button>
+
+        <!-- Show any server‐side error here -->
+        <div *ngIf="errorMessage" class="mt-2 text-red-500 text-sm">
+          {{ errorMessage }}
+        </div>
       </form>
 
       <p class="mt-4 text-center text-sm text-gray-600">

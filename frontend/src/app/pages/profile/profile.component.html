@@ -1,0 +1,307 @@
+<div class="container mx-auto py-6 space-y-6">
+
+  <!-- Page Title -->
+  <h1 class="text-3xl font-bold dark:text-gray-100">My Profile</h1>
+
+  <div class="flex flex-col gap-6 md:flex-row">
+
+    <!-- Left column: Avatar + basic -->
+    <div class="md:w-1/3">
+      <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700">
+        <!-- Header -->
+        <div class="p-4 border-b dark:border-gray-700">
+          <h2 class="text-lg font-semibold dark:text-gray-100">Profile Picture</h2>
+        </div>
+        <!-- Avatar + Change button -->
+        <div class="p-4 flex flex-col items-center space-y-4">
+          <div class="h-32 w-32 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
+            <!-- fallback initials -->
+            <span class="text-4xl text-gray-400">JD</span>
+          </div>
+          <button class="px-4 py-2 border rounded flex items-center gap-1 text-sm 
+                         bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200">
+            <lucide-icon name="Camera" class="h-4 w-4"></lucide-icon>
+            Change Picture
+          </button>
+        </div>
+        <!-- Footer with name/role/join-date -->
+        <div class="p-4 border-t dark:border-gray-700 space-y-1">
+          <div>
+            <h3 class="font-medium dark:text-gray-100">John Doe</h3>
+            <p class="text-sm text-gray-600 dark:text-gray-400">Chairperson</p>
+          </div>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Member since: January 15, 2023</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right column: Tabs -->
+    <div class="flex-1 space-y-4">
+      <!-- Tabs nav -->
+      <div class="inline-flex space-x-2 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+        <button
+          (click)="activeTab='account'"
+          class="px-4 py-2 rounded-lg text-sm"
+          [ngClass]="activeTab==='account'
+            ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+            : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'">
+          Account
+        </button>
+        <button
+          (click)="activeTab='password'"
+          class="px-4 py-2 rounded-lg text-sm"
+          [ngClass]="activeTab==='password'
+            ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+            : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'">
+          Password
+        </button>
+        <button
+          (click)="activeTab='notifications'"
+          class="px-4 py-2 rounded-lg text-sm"
+          [ngClass]="activeTab==='notifications'
+            ? 'bg-white text-gray-900 dark:bg-gray-800 dark:text-gray-100'
+            : 'text-gray-600 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'">
+          Notifications
+        </button>
+      </div>
+
+      <!-- ACCOUNT TAB -->
+      <section *ngIf="activeTab==='account'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-4">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Account Information</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">Update your personal information</p>
+
+          <!-- Name fields -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm dark:text-gray-100">First name</label>
+              <input
+                type="text"
+                name="firstName"
+                [(ngModel)]="formData.firstName"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            </div>
+            <div>
+              <label class="block text-sm dark:text-gray-100">Last name</label>
+              <input
+                type="text"
+                name="lastName"
+                [(ngModel)]="formData.lastName"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="block text-sm dark:text-gray-100">Email</label>
+            <input
+              type="email"
+              name="email"
+              [(ngModel)]="formData.email"
+              (ngModelChange)="handleInputChange($event)"
+              class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+          </div>
+
+          <!-- Position & Org -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm dark:text-gray-100">Position</label>
+              <input
+                type="text"
+                name="position"
+                [(ngModel)]="formData.position"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            </div>
+            <div>
+              <label class="block text-sm dark:text-gray-100">Organization</label>
+              <input
+                type="text"
+                name="organization"
+                [(ngModel)]="formData.organization"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+            </div>
+          </div>
+
+          <div class="text-right">
+            <button
+              (click)="handleSaveProfile()"
+              class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2 text-sm">
+              <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+              Save Changes
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PASSWORD TAB -->
+      <section *ngIf="activeTab==='password'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-4">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Change Password</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Update your password to keep your account secure
+          </p>
+
+          <!-- Current -->
+          <div>
+            <label class="block text-sm dark:text-gray-100">Current password</label>
+            <div class="relative">
+              <input
+                [type]="showCurrent ? 'text' : 'password'"
+                name="currentPassword"
+                [(ngModel)]="formData.currentPassword"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 pr-10 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+              <button
+                type="button"
+                (click)="showCurrent = !showCurrent"
+                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400">
+                <lucide-icon [name]="showCurrent ? 'EyeOff' : 'Eye'" class="h-4 w-4"></lucide-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- New -->
+          <div>
+            <label class="block text-sm dark:text-gray-100">New password</label>
+            <div class="relative">
+              <input
+                [type]="showNew ? 'text' : 'password'"
+                name="newPassword"
+                [(ngModel)]="formData.newPassword"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 pr-10 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+              <button
+                type="button"
+                (click)="showNew = !showNew"
+                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400">
+                <lucide-icon [name]="showNew ? 'EyeOff' : 'Eye'" class="h-4 w-4"></lucide-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Confirm -->
+          <div>
+            <label class="block text-sm dark:text-gray-100">Confirm new password</label>
+            <div class="relative">
+              <input
+                [type]="showConfirm ? 'text' : 'password'"
+                name="confirmPassword"
+                [(ngModel)]="formData.confirmPassword"
+                (ngModelChange)="handleInputChange($event)"
+                class="w-full border rounded px-3 py-2 pr-10 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100" />
+              <button
+                type="button"
+                (click)="showConfirm = !showConfirm"
+                class="absolute inset-y-0 right-0 px-3 flex items-center text-gray-500 dark:text-gray-400">
+                <lucide-icon [name]="showConfirm ? 'EyeOff' : 'Eye'" class="h-4 w-4"></lucide-icon>
+              </button>
+            </div>
+          </div>
+
+          <div class="p-4 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600">
+            <div class="flex items-center gap-2 mb-2">
+              <lucide-icon name="AlertCircle" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
+              <strong class="dark:text-gray-100">Password Requirements</strong>
+            </div>
+            <ul class="list-disc pl-5 text-sm text-gray-600 dark:text-gray-400">
+              <li>At least 8 characters long</li>
+              <li>Include at least one uppercase letter</li>
+              <li>Include at least one number</li>
+              <li>Include at least one special character</li>
+            </ul>
+          </div>
+
+          <div class="text-right">
+            <button
+              (click)="handleChangePassword()"
+              class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2 text-sm">
+              <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+              Change Password
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- NOTIFICATIONS TAB -->
+      <section *ngIf="activeTab==='notifications'">
+        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-4">
+          <h2 class="text-xl font-semibold dark:text-gray-100">Notification Preferences</h2>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Manage how and when you receive notifications
+          </p>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="dark:text-gray-100">Email Notifications</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">Receive notifications via email</span>
+              </div>
+              <input
+                type="checkbox"
+                [(ngModel)]="notificationSettings.emailNotifications"
+                (change)="handleSwitch('emailNotifications')"
+                class="toggle toggle-primary"
+              />
+            </div>
+            <hr class="dark:border-gray-700" />
+
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="dark:text-gray-100">Session Reminders</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">Receive reminders about upcoming sessions</span>
+              </div>
+              <input
+                type="checkbox"
+                [(ngModel)]="notificationSettings.sessionReminders"
+                (change)="handleSwitch('sessionReminders')"
+                class="toggle toggle-primary"
+              />
+            </div>
+            <hr class="dark:border-gray-700" />
+
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="dark:text-gray-100">Task Assignments</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">Receive notifications when you are assigned a task</span>
+              </div>
+              <input
+                type="checkbox"
+                [(ngModel)]="notificationSettings.taskAssignments"
+                (change)="handleSwitch('taskAssignments')"
+                class="toggle toggle-primary"
+              />
+            </div>
+            <hr class="dark:border-gray-700" />
+
+            <div class="flex items-center justify-between">
+              <div class="flex flex-col">
+                <span class="dark:text-gray-100">Minutes Available</span>
+                <span class="text-sm text-gray-500 dark:text-gray-400">Receive notifications when meeting minutes are available</span>
+              </div>
+              <input
+                type="checkbox"
+                [(ngModel)]="notificationSettings.minutesAvailable"
+                (change)="handleSwitch('minutesAvailable')"
+                class="toggle toggle-primary"
+              />
+            </div>
+          </div>
+
+          <div class="text-right">
+            <button
+              (click)="handleSaveNotifications()"
+              class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-2 text-sm">
+              <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+              Save Preferences
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
