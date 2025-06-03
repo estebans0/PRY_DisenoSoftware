@@ -1,14 +1,16 @@
 // backend/src/models/user.model.ts
 
-import { Schema, model, Document } from 'mongoose';
+import { Schema, model, Document, ObjectId } from 'mongoose';
 import bcrypt from 'bcrypt';
 
 // 1) Create an interface representing a document in MongoDB
 export interface User extends Document {
+  userID: ObjectId;
   firstName: string;
   lastName: string;
   email: string;
   position: string;
+  tipoUsuario: 'ADMINISTRADOR' | 'USUARIO';
   organization: string;
   password: string;
 
@@ -19,6 +21,7 @@ export interface User extends Document {
 // 2) Define the Schema for User
 const userSchema = new Schema<User>(
   {
+    userID: { type: Schema.Types.ObjectId, auto: true },
     firstName: {
       type: String,
       required: true,
@@ -36,6 +39,13 @@ const userSchema = new Schema<User>(
       lowercase: true,
       trim: true,
     },
+    tipoUsuario: {
+    type: String,
+    required: true,
+    enum: {
+      values: ['ADMINISTRADOR', 'USUARIO'],
+    }
+  },
     position: {
       type: String,
       required: true,
