@@ -44,6 +44,8 @@ export class AuthService {
     email: string;
     password: string;
     confirmPassword: string;
+    position: string;
+    tipoUsuario: string; // Default to 'USUARIO'
   }): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.base}/register`, payload)
       .pipe(

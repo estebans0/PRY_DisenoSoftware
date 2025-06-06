@@ -30,7 +30,7 @@ export class SessionNewComponent {
     description: '',
   };
 
-  // members & attendees
+  // Hay que adaptar esto para que haga un fetch a la API y obtenga los miembros
   members = [
     { id:1, name:'John Doe',       position:'Chairperson',      email:'john.doe@example.com' },
     { id:2, name:'Jane Smith',     position:'Vice Chairperson', email:'jane.smith@example.com' },

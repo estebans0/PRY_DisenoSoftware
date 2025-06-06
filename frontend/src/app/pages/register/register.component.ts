@@ -28,6 +28,8 @@ export class RegisterComponent {
     email: '',
     password: '',
     confirmPassword: '',
+    position: '',
+    tipoUsuario: 'USUARIO', // Default to 'USUARIO'
   };
   showPassword = false;
   showConfirm  = false;
@@ -61,6 +63,8 @@ export class RegisterComponent {
       email: f.email,
       password: f.password,
       confirmPassword: f.confirmPassword,
+      position: f.position,
+      tipoUsuario: f.tipoUsuario
     }).subscribe({
       next: (res) => {
         // On success, token was stored—navigate to dashboard
