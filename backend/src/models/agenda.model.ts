@@ -21,7 +21,7 @@ export interface IAgendaItem extends Document {
 }
 
 // Define main session document
-export interface ISessionAgenda extends Document {
+export interface Agenda extends Document {
   sessionId: Types.ObjectId;  // Reference to main session
   agendaItems: IAgendaItem[]; // Array of agenda items
 }
@@ -71,7 +71,7 @@ const AgendaItemSchema = new Schema<IAgendaItem>({
 }, { _id: false });
 
 // Main session agenda schema
-const SessionAgendaSchema = new Schema<ISessionAgenda>({
+const SessionAgendaSchema = new Schema<Agenda>({
   sessionId: { 
     type: Schema.Types.ObjectId,
     required: true,
@@ -104,4 +104,4 @@ const SessionAgendaSchema = new Schema<ISessionAgenda>({
 // Create unique index
 SessionAgendaSchema.index({ sessionId: 1 }, { unique: true });
 
-export const SessionAgenda = model<ISessionAgenda>('SessionAgenda', SessionAgendaSchema);
+export const SessionAgenda = model<Agenda>('SessionAgenda', SessionAgendaSchema);

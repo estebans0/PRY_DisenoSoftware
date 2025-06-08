@@ -24,3 +24,5 @@ const SessionSchema = new Schema<ISession>({
 }, { timestamps: true });
 
 export const Session = model<ISession>('Session', SessionSchema);
+
+
