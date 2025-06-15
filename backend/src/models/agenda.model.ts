@@ -1,107 +1,58 @@
-import { Schema, model, Document, Types } from 'mongoose';
+import mongoose, { Document, Schema, Types } from 'mongoose';
 
-// Define action interface
-export interface IAction {
+// Action interface
+interface IAction {
   TipoAccion: string;
   Descripcion: string;
 }
 
-// Define agenda item interface
-export interface IAgendaItem extends Document {
+// AgendaItem interface
+export interface IAgendaItem {
   Orden: number;
   Titulo: string;
   Duration: number;
-  Presenter: Types.ObjectId;  // Should reference a user
-  Notas?: string;
-  Pro?: number;
-  Against?: number;
-  EstimatedTime?: number;
+  Presenter: string;
+  Notas: string;
+  Pro: number;
+  Against: number;
+  EstimatedTime: number;
   Actions?: IAction[];
   SupportingDocuments?: Types.ObjectId[];
 }
 
-// Define main session document
-export interface Agenda extends Document {
-  sessionId: Types.ObjectId;  // Reference to main session
-  agendaItems: IAgendaItem[]; // Array of agenda items
+// SessionAgenda interface
+export interface ISessionAgenda extends Document {
+  NumeroSession: Types.ObjectId;
+  SessionAgenda: IAgendaItem[];
 }
 
 // Action schema
 const ActionSchema = new Schema<IAction>({
   TipoAccion: { type: String, required: true },
   Descripcion: { type: String, required: true }
-}, { _id: false });
+});
 
-// Agenda item schema
+// AgendaItem schema
 const AgendaItemSchema = new Schema<IAgendaItem>({
-  Orden: { 
-    type: Number, 
-    required: true,
-    min: [1, 'Order must be at least 1']
-  },
-  Titulo: { 
-    type: String, 
-    required: [true, 'Title is required'] 
-  },
-  Duration: { 
-    type: Number, 
-    required: true,
-    min: [1, 'Duration must be at least 1 minute']
-  },
-  Presenter: { 
-    type: Schema.Types.ObjectId, 
-    required: true,
-    ref: 'User'  // Reference to user model
-  },
-  Notas: String,
-  Pro: Number,
-  Against: Number,
-  EstimatedTime: Number,
-  Actions: {
-    type: [ActionSchema],
-    validate: {
-      validator: (arr: IAction[]) => arr.length <= 10,
-      message: 'Maximum 10 actions per agenda item'
-    }
-  },
-  SupportingDocuments: [{ 
-    type: Schema.Types.ObjectId,
-    ref: 'Document'  // Reference to documents model
-  }]
-}, { _id: false });
+  Orden: { type: Number, required: true },
+  Titulo: { type: String, required: true },
+  Duration: { type: Number, required: true },
+  Presenter: { type: String, required: true }, // Email address
+  Notas: { type: String },
+  Pro: { type: Number, default: 0 },
+  Against: { type: Number, default: 0 },
+  EstimatedTime: { type: Number, required: true },
+  Actions: [ActionSchema],
+  SupportingDocuments: [{ type: Schema.Types.ObjectId, ref: 'Document' }]
+});
 
-// Main session agenda schema
-const SessionAgendaSchema = new Schema<Agenda>({
-  sessionId: { 
-    type: Schema.Types.ObjectId,
-    required: true,
-    unique: true,
-    ref: 'Session'  // Reference to session model
-  },
-  agendaItems: {
-    type: [AgendaItemSchema],
-    required: true,
-    validate: [
-      { 
-        validator: (arr: IAgendaItem[]) => arr.length >= 1,
-        message: 'At least one agenda item is required'
-      },
-      { 
-        validator: (arr: IAgendaItem[]) => arr.length <= 20,
-        message: 'Maximum 20 agenda items allowed'
-      },
-      { 
-        validator: function(arr: IAgendaItem[]) {
-          const orders = arr.map(item => item.Orden);
-          return new Set(orders).size === orders.length;
-        },
-        message: 'Order values must be unique'
-      }
-    ]
-  }
-}, { timestamps: true });
+// SessionAgenda schema
+const SessionAgendaSchema = new Schema<ISessionAgenda>({
+  NumeroSession: { type: Schema.Types.ObjectId, ref: 'Session', required: true },
+  SessionAgenda: [AgendaItemSchema]
+});
 
-// Create unique index
-SessionAgendaSchema.index({ sessionId: 1 }, { unique: true });
+// Add a unique index on NumeroSession
+SessionAgendaSchema.index({ NumeroSession: 1 }, { unique: true });
 
-export const SessionAgenda = model<Agenda>('SessionAgenda', SessionAgendaSchema);
+export const SessionAgenda = mongoose.model<ISessionAgenda>('SessionAgenda', SessionAgendaSchema, 'sesionAgenda');
