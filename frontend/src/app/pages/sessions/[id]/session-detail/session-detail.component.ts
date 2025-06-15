@@ -1,7 +1,6 @@
-// src/app/pages/sessions/[id]/session-detail/session-detail.component.ts
 import { Component, OnInit }            from '@angular/core';
 import { CommonModule }                 from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { LucideAngularModule }          from 'lucide-angular';
 
 @Component({
@@ -44,7 +43,10 @@ export class SessionDetailComponent implements OnInit {
   declinedCount  = 0;
   totalDuration  = 0;
 
-  constructor(private route: ActivatedRoute) {}
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router
+  ) {}
 
   ngOnInit(): void {
     // load before first render
@@ -55,6 +57,16 @@ export class SessionDetailComponent implements OnInit {
     }
     this.sessionId = Number(idParam);
     this.loadMockData();
+  }
+
+  /** navigate to /sessions/:id/edit */
+  goToEdit() {
+    this.router.navigate(['/sessions', this.sessionId, 'edit']);
+  }
+
+  /** navigate to /sessions/:id/start */
+  goToStart() {
+    this.router.navigate(['/sessions', this.sessionId, 'start']);
   }
 
   private loadMockData() {
