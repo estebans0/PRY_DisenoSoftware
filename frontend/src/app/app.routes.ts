@@ -5,6 +5,7 @@ import { AuthGuard } from './guards/auth.guard';
 import { HomeComponent } from './pages/home/home.component';
 import { LoginComponent } from './pages/login/login.component';
 import { ProfileComponent } from './pages/profile/profile.component';
+import { MembersComponent } from './pages/members/members.component';
 import { RegisterComponent } from './pages/register/register.component';
 import { DashboardComponent } from './pages/dashboard/dashboard.component';
 import { SessionNewComponent } from './pages/sessions/new/session-new.component';
@@ -22,6 +23,7 @@ export const routes: Routes = [
 
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'profile',   component: ProfileComponent,   canActivate: [AuthGuard] },
+  { path: 'members',  component: MembersComponent,  canActivate: [AuthGuard] },
   { path: 'sessions',  component: SessionListComponent, canActivate: [AuthGuard] },
 
   { path: 'sessions/new',      component: SessionNewComponent, canActivate: [AuthGuard] },

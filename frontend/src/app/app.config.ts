@@ -1,5 +1,9 @@
 // src/app/app.config.ts
-import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import {
+  ApplicationConfig,
+  importProvidersFrom,
+  provideZoneChangeDetection
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import {
@@ -43,6 +47,8 @@ import {
   Square,
   // profile
   Camera,
+  // members page additions
+  Search
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -96,7 +102,10 @@ export const appConfig: ApplicationConfig = {
         Square,
 
         // profile
-        Camera
+        Camera,
+
+        // members page additions
+        Search
       })
     )
   ]
