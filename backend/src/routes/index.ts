@@ -9,8 +9,12 @@ const router = Router();
 router.get( '/sessions',     SessionCtrl.list);
 router.post('/sessions',     SessionCtrl.create);
 router.get( '/sessions/:id', SessionCtrl.getOne);
+router.put( '/sessions/:id', SessionCtrl.update);
+router.delete('/sessions/:id', SessionCtrl.remove);
 
 // user endpoints
 router.use('/users', userRouter);
+
+
 
 export default router;
