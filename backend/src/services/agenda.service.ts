@@ -96,4 +96,22 @@ export const deleteAgenda = async (sessionId: Types.ObjectId) => {
   return SessionAgenda.findOneAndDelete({ NumeroSession: sessionId });
 };
 
+// Remove a document from an agenda item
+export const removeDocumentFromAgendaItem = async (
+  sessionId: Types.ObjectId,
+  order: number,
+  docId: Types.ObjectId
+) => {
+  return SessionAgenda.findOneAndUpdate(
+    { 
+      NumeroSession: sessionId,
+      'SessionAgenda.Orden': order 
+    },
+    { 
+      $pull: { 'SessionAgenda.$.SupportingDocuments': docId } 
+    },
+    { new: true, runValidators: true }
+  ).populate('SessionAgenda.Presenter');
+};
+
 

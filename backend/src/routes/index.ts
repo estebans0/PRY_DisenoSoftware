@@ -3,6 +3,8 @@ import { Router } from 'express';
 import * as SessionCtrl from '../controllers/session.controller';
 import * as AgendaCtrl from '../controllers/Agenda.controller';
 import userRouter from './user.routes';
+import multer from 'multer';
+const upload = multer({ dest: 'uploads/' });
 
 const router = Router();
 
