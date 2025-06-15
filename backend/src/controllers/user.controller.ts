@@ -109,86 +109,82 @@ const signToken = (user: User): string => {
 /**
  * Register a new user.
  * POST /api/users/register
- * Body: { firstName, lastName, email, password, confirmPassword, position, organization }
+ * Body: { firstName, lastName, email, password, confirmPassword }
  */
-export const register: RequestHandler = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+export const register: RequestHandler = async (req, res, next) => {
   try {
+    // 1) pull only what the front end sends
     const {
       firstName,
       lastName,
       email,
       password,
       confirmPassword,
-      position,
-      organization,
     } = req.body as {
-      firstName: string;
-      lastName: string;
-      email: string;
-      password: string;
-      confirmPassword: string;
-      position: string;
-      organization: string;
-    };
-
-    // 1) Check required fields
-    if (
-      !firstName ||
-      !lastName ||
-      !email ||
-      !password ||
-      !confirmPassword
-    ) {
-      res.status(400).json({ message: 'All fields are required.' });
-      return;
+      firstName: string
+      lastName: string
+      email: string
+      password: string
+      confirmPassword: string
     }
 
-    // 2) Check password match
+    // 2) Required fields
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
+      res.status(400).json({ message: 'All fields are required.' })
+      return
+    }
+
+    // 3) Passwords must match
     if (password !== confirmPassword) {
-      res.status(400).json({ message: 'Passwords do not match.' });
-      return;
+      res.status(400).json({ message: 'Passwords do not match.' })
+      return
     }
 
-    // 3) Check if email already exists
-    const existing = await UserModel.findOne({ email });
+    // 4) Email uniqueness check
+    const existing = await UserModel.findOne({ email })
     if (existing) {
-      res.status(400).json({ message: 'Email already in use.' });
-      return;
+      res.status(400).json({ message: 'Email already in use.' })
+      return
     }
 
-    // 4) Create new user (password will be hashed by the schema pre hook)
+    // 5) Create the new user
+    //    your schema now requires: firstName, lastName, email, tipoUsuario, position, organization, password
+    //    defaulting tipoUsuario='USUARIO', position='Unassigned', organization='Unassigned'
     const newUser = new UserModel({
       firstName,
       lastName,
       email,
-      password,
-      position : "Guest",
-      organization : "Unassigned",
-    });
-    await newUser.save();
+      tipoUsuario: 'USUARIO',
+      position:    'Unassigned',
+      organization:'Unassigned',
+      password, // assume your schema has a pre-save hook to hash it
+    })
 
-    // 5) Sign a JWT
-    const token = signToken(newUser);
+    await newUser.save()
 
-    // 6) Return token + user info
+    // 6) Sign a JWT for the newly created user
+    const token = signToken(newUser)
+
+    // 7) Return the token and a safe user payload
     res.status(201).json({
       token,
       user: {
-        _id: newUser._id,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        email: newUser.email,
-        position: newUser.position,
-        organization: newUser.organization,
+        _id:           newUser._id,
+        firstName:     newUser.firstName,
+        lastName:      newUser.lastName,
+        email:         newUser.email,
+        tipoUsuario:   newUser.tipoUsuario,
+        position:      newUser.position,
+        organization:  newUser.organization,
       },
-    });
-    return;
+    })
+    return
   } catch (err) {
-    console.error('Register error:', err);
-    res.status(500).json({ message: 'Server error during registration.' });
-    return;
+    console.error('Register error:', err)
+    res.status(500).json({ message: 'Server error during registration.' })
+    return
   }
-};
+}
 
 /**
  * Log in an existing user.
