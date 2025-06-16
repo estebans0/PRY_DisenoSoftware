@@ -25,7 +25,6 @@ import { MemberService }           from '../../../services/member.service';
 export class SessionListComponent implements OnInit {
   sessions: Session[] = [];
   loading = true;
-  error: string | null = null;
 
   // filters
   searchQuery = '';
@@ -49,7 +48,7 @@ export class SessionListComponent implements OnInit {
   ngOnInit() {
     this.loading = true;
     forkJoin({
-      sessions: this.sessionsSvc.list(),
+      sessions: this.sessionsSvc.getSessions(),
       settings: this.settingsSvc.get(),
       members:  this.memberSvc.list()
     }).subscribe({
@@ -59,10 +58,9 @@ export class SessionListComponent implements OnInit {
         this.totalMembers = members.length;
         this.loading = false;
       },
-      error: (err: any) => {
-        this.error = 'Failed to load sessions';
-        this.loading = false;
+      error: err => {
         console.error(err);
+        this.loading = false;
       }
     });
   }
@@ -109,7 +107,7 @@ export class SessionListComponent implements OnInit {
   }
   doDelete() {
     if (!this.selectedId) return;
-    this.sessionsSvc.delete(this.selectedId).subscribe({
+    this.sessionsSvc.deleteSession(this.selectedId).subscribe({
       next: () => {
         this.isDeleteOpen = false;
         this.reload();
@@ -119,7 +117,7 @@ export class SessionListComponent implements OnInit {
   }
   private reload() {
     this.loading = true;
-    this.sessionsSvc.list().subscribe({
+    this.sessionsSvc.getSessions().subscribe({
       next: data => { this.sessions = data; this.loading = false; },
       error: () => this.loading = false
     });
