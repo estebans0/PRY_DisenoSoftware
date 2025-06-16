@@ -1,5 +1,38 @@
 import { Schema, model, Document, ObjectId } from 'mongoose';
 
+// Action interface
+interface IAction {
+  TipoAccion: string;
+  Descripcion: string;
+  Responsable?: string;
+  DueDate?: Date;
+  Estado?: string;
+}
+
+// Document interface for storing in SupportingDocuments
+interface ISupportingDocument {
+  fileName: string;
+  fileType: string;
+  fileSize: number;
+  filePath: string;
+  uploadDate: Date;
+}
+
+// AgendaItem interface
+interface IAgendaItem {
+  _id?: any; // Keep for TypeScript compatibility
+  Orden: number;
+  Titulo: string;
+  Duration: number;
+  Presenter: string;
+  Notas: string;
+  Pro: number;
+  Against: number;
+  EstimatedTime: number;
+  Actions?: IAction[];
+  SupportingDocuments?: ISupportingDocument[];
+}
+
 interface IGuest {
   id: number;
   name?: string;
@@ -11,66 +44,66 @@ export interface ISession extends Document {
   number: string;
   date: Date;
   time: string;
+  endTime?: string;
   modality: string;
   location: string;
   quorum: string;
-  attendees: { memberId: string; status: string }[];
-  agenda: { title: string; presenter: string; duration: number }[];
-  guests: IGuest[];
-  status: 'scheduled' | 'in-progress' | 'completed'; // Nuevo campo de estado
-  attendees: { 
-    memberId: string; 
-    status: 'confirmed' | 'pending' | 'declined' | 'present' | 'absent'; // Estados ampliados
-  }[];
-  agenda: { 
-    title: string; 
-    presenter: string; 
-    duration: number;
-    notes?: string;
-    voting?: {
-      inFavor: number;
-      against: number;
-      abstain: number;
-      result: string;
-    };
-    tasks?: Array<{ description: string; assignee: string }>;
-  }[];
-  startTime?: Date;
-  endTime?: Date;
+  attendees: { email: string; status: string; role?: string }[]; // Changed memberId to email
+  guests?: IGuest[];
+  agenda: IAgendaItem[];
+  type?: string;
+  status?: string;
+  description?: string;
+  minuteMaker?: string; // Email of the person who created the minutes
+  minuteSigner?: string; // Email of the person who signed/approved the minutes
 }
+
+// Action schema
+const ActionSchema = new Schema<IAction>({
+  TipoAccion: { type: String, required: true },
+  Descripcion: { type: String, required: true },
+  Responsable: { type: String },
+  DueDate: { type: Date },
+  Estado: { type: String }
+});
+
+// AgendaItem schema
+const AgendaItemSchema = new Schema<IAgendaItem>({
+  Orden: { type: Number, required: true },
+  Titulo: { type: String, required: true },
+  Duration: { type: Number, required: true },
+  Presenter: { type: String, required: true },
+  Notas: { type: String },
+  Pro: { type: Number, default: 0 },
+  Against: { type: Number, default: 0 },
+  EstimatedTime: { type: Number, required: true },
+  Actions: [ActionSchema],
+  SupportingDocuments: {}
+});
 
 const SessionSchema = new Schema<ISession>({
   SessionID: { type: Schema.Types.ObjectId, auto: true },
-  number:     { type: String, required: true },
-  date:       { type: Date,   required: true },
-  time:       String,
-  modality:   String,
-  location:   String,
-  quorum:     String,
-  attendees:  [{ memberId: String, status: String }],
-  guests: [{id: Number, name: String, email :{ type: String, required: true } }],
-  status:     { type: String, enum: ['scheduled', 'in-progress', 'completed'], default: 'scheduled' },
-  startTime:  Date,
-  endTime:    Date,
-  attendees:  [{ 
-    memberId: String, 
-    status: { type: String, enum: ['confirmed', 'pending', 'declined', 'present', 'absent'] }
+  number: { type: String, required: true, unique: true },
+  date: { type: Date, required: true },
+  time: String,
+  endTime: String,
+  modality: String,
+  location: String,
+  quorum: String,
+  attendees: [{ 
+    email: String, // Changed from memberId to email
+    status: String,
+    role: String 
   }],
-  agenda:     [{
-    title: String,
-    presenter: String,
-    duration: Number,
-    notes: String,
-    voting: {
-      inFavor: Number,
-      against: Number,
-      abstain: Number,
-      result: String
-    },
-    tasks: [{
-      description: String,
-      assignee: String
-    }]
+  guests: [{
+    name: String,
+    email: String,
+    organization: String
+  }],
+  agenda: [AgendaItemSchema],
+  type: String,
+  status: String,
+  description: String,
 }, { timestamps: true });
 
 export const Session = model<ISession>('Session', SessionSchema);

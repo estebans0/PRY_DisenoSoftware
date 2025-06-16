@@ -1,59 +1,82 @@
-import { Types } from 'mongoose';
-import { SessionAgenda, Agenda, IAgendaItem } from '../models/agenda.model';
+import mongoose, { Types } from 'mongoose';
+import { SessionAgenda } from '../models/agenda.model';
 
 // Get full agenda for a session
 export const getAgendaBySessionId = async (sessionId: string) => {
-  return SessionAgenda.findOne({ sessionId }).populate([
-    { path: 'agendaItems.Presenter', select: 'name apellidos' },
-    { path: 'agendaItems.SupportingDocuments' }
-  ]);
+  // Get the agenda items first
+  const agenda = await SessionAgenda.findOne({ 
+    NumeroSession: new Types.ObjectId(sessionId) 
+  });
+  
+  if (!agenda) return null;
+  
+  // Get all presenter emails from the agenda
+  const presenterEmails = agenda.SessionAgenda.map(item => item.Presenter);
+  
+  // Find the presenters
+  const presenters = await mongoose.model('User').find({
+    email: { $in: presenterEmails }
+  }, 'name apellidos email');
+  
+  // Create a lookup map for quick access
+  const presenterMap = new Map();
+  presenters.forEach(p => presenterMap.set(p.email, p));
+  
+  // Attach presenter data to the response
+  const result = agenda.toObject();
+  result.SessionAgenda = result.SessionAgenda.map(item => ({
+    ...item,
+    PresenterDetails: presenterMap.get(item.Presenter) || null
+  }));
+  
+  return result;
 };
 
 // Create or update entire agenda
 export const createOrUpdateAgenda = async (
   sessionId: Types.ObjectId,
-  agendaItems: IAgendaItem[]
+  agendaItems: any[]
 ) => {
   return SessionAgenda.findOneAndUpdate(
-    { sessionId },
-    { agendaItems },
+    { NumeroSession: sessionId },
+    { SessionAgenda: agendaItems },
     { upsert: true, new: true, runValidators: true }
-  ).populate('agendaItems.Presenter');
+  ).populate('SessionAgenda.Presenter');
 };
 
 // Add a new agenda item to existing agenda
 export const addAgendaItem = async (
   sessionId: Types.ObjectId,
-  newItem: IAgendaItem
+  newItem: any
 ) => {
   return SessionAgenda.findOneAndUpdate(
-    { sessionId },
-    { $push: { agendaItems: newItem } },
+    { NumeroSession: sessionId },
+    { $push: { SessionAgenda: newItem } },
     { new: true, runValidators: true }
-  ).populate('agendaItems.Presenter');
+  ).populate('SessionAgenda.Presenter');
 };
 
 // Update existing agenda item
 export const updateAgendaItem = async (
   sessionId: Types.ObjectId,
-  order: number,  // Using order as identifier since no _id in subdocuments
-  updates: Partial<IAgendaItem>
+  order: number,
+  updates: any
 ) => {
   const updateObj: Record<string, any> = {};
   
   // Build dynamic update object
   for (const [key, value] of Object.entries(updates)) {
-    updateObj[`agendaItems.$.${key}`] = value;
+    updateObj[`SessionAgenda.$.${key}`] = value;
   }
 
   return SessionAgenda.findOneAndUpdate(
     { 
-      sessionId,
-      'agendaItems.Orden': order 
+      NumeroSession: sessionId,
+      'SessionAgenda.Orden': order 
     },
     { $set: updateObj },
     { new: true, runValidators: true }
-  ).populate('agendaItems.Presenter');
+  ).populate('SessionAgenda.Presenter');
 };
 
 // Delete an agenda item
@@ -62,15 +85,33 @@ export const deleteAgendaItem = async (
   order: number
 ) => {
   return SessionAgenda.findOneAndUpdate(
-    { sessionId },
-    { $pull: { agendaItems: { Orden: order } } },
+    { NumeroSession: sessionId },
+    { $pull: { SessionAgenda: { Orden: order } } },
     { new: true, runValidators: true }
-  ).populate('agendaItems.Presenter');
+  ).populate('SessionAgenda.Presenter');
 };
 
 // Delete entire agenda
 export const deleteAgenda = async (sessionId: Types.ObjectId) => {
-  return SessionAgenda.findOneAndDelete({ sessionId });
+  return SessionAgenda.findOneAndDelete({ NumeroSession: sessionId });
+};
+
+// Remove a document from an agenda item
+export const removeDocumentFromAgendaItem = async (
+  sessionId: Types.ObjectId,
+  order: number,
+  docId: Types.ObjectId
+) => {
+  return SessionAgenda.findOneAndUpdate(
+    { 
+      NumeroSession: sessionId,
+      'SessionAgenda.Orden': order 
+    },
+    { 
+      $pull: { 'SessionAgenda.$.SupportingDocuments': docId } 
+    },
+    { new: true, runValidators: true }
+  ).populate('SessionAgenda.Presenter');
 };
 
 

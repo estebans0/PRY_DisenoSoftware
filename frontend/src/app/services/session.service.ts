@@ -21,24 +21,44 @@ export class SessionService {
 
   constructor(private http: HttpClient) {}
 
-  list(): Observable<Session[]> {
-    return this.http.get<Session[]>(this.base);
+  // Get all sessions
+  getSessions(): Observable<any[]> {
+    return this.http.get<any[]>(this.base);
   }
 
-  get(id: string): Observable<Session> {
-    return this.http.get<Session>(`${this.base}/${id}`);
+  // Get a single session by ID
+  getSession(sessionId: string): Observable<any> {
+    return this.http.get<any>(`${this.base}/${sessionId}`);
   }
 
-  create(data: Partial<Session>): Observable<Session> {
-    return this.http.post<Session>(this.base, data);
+  // Create a new session
+  createSession(session: any): Observable<any> {
+    return this.http.post<any>(this.base, session);
   }
 
-  update(id: string, data: Partial<Session>): Observable<Session> {
-    return this.http.put<Session>(`${this.base}/${id}`, data);
+  // Update an existing session
+  updateSession(sessionId: string, updates: any): Observable<any> {
+    return this.http.put<any>(`${this.base}/${sessionId}`, updates);
   }
 
-  delete(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.base}/${id}`);
+  // Delete a session
+  deleteSession(sessionId: string): Observable<any> {
+    return this.http.delete<any>(`${this.base}/${sessionId}`);
+  }
+
+  // Update attendee status (present/absent)
+  updateAttendeeStatus(sessionId: string, attendeeId: string, attended: boolean): Observable<any> {
+    return this.http.put<any>(`${this.base}/${sessionId}/attendees/${attendeeId}`, { Asistio: attended });
+  }
+
+  // Add attendee to session
+  addAttendee(sessionId: string, attendeeId: string): Observable<any> {
+    return this.http.post<any>(`${this.base}/${sessionId}/attendees`, { Attendee: attendeeId });
+  }
+
+  // Remove attendee from session
+  removeAttendee(sessionId: string, attendeeId: string): Observable<any> {
+    return this.http.delete<any>(`${this.base}/${sessionId}/attendees/${attendeeId}`);
   }
   startSession(sessionId: string): Observable<any> {
     return this.http.post(`${this.base}/${sessionId}/start`, {});

@@ -25,6 +25,7 @@ import { MemberService }           from '../../../services/member.service';
 export class SessionListComponent implements OnInit {
   sessions: Session[] = [];
   loading = true;
+  error: string | null = null;
 
   // filters
   searchQuery = '';
@@ -58,9 +59,10 @@ export class SessionListComponent implements OnInit {
         this.totalMembers = members.length;
         this.loading = false;
       },
-      error: err => {
-        console.error(err);
+      error: (err: any) => {
+        this.error = 'Failed to load sessions';
         this.loading = false;
+        console.error(err);
       }
     });
   }

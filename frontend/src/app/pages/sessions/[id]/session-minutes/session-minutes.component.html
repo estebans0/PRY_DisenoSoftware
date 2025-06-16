@@ -1,4 +1,14 @@
-<div class="container mx-auto py-6 space-y-6">
+<div *ngIf="loading" class="flex justify-center items-center p-8">
+  <div class="spinner-border text-primary" role="status">
+    <span class="sr-only">Loading...</span>
+  </div>
+</div>
+
+<div *ngIf="error" class="alert alert-danger">
+  {{ error }}
+</div>
+
+<div *ngIf="session && !loading" class="container mx-auto py-6 space-y-6">
 
   <!-- Header & Actions -->
   <div class="flex items-center justify-between">
@@ -9,11 +19,11 @@
           Session #{{ session.number }}
         </span>
         <span class="px-2 py-0.5 text-xs bg-green-500 text-white rounded">
-          {{ session.status }}
+          {{ session.status || 'Draft' }}
         </span>
       </div>
       <p class="text-gray-500">
-        {{ session.date }} • {{ session.time }} to {{ session.endTime }}
+        {{ session.date || 'No date' }} • {{ session.time || '--' }} to {{ session.endTime || '--' }}
       </p>
     </div>
     <div class="flex gap-2">
@@ -54,10 +64,16 @@
 
       <!-- Title Block -->
       <div class="text-center space-y-2">
-        <h1 class="text-2xl font-bold">MINUTES OF MEETING</h1>
-        <h2 class="text-xl">Board of Directors</h2>
-        <p>Session #{{ session.number }} – {{ session.type }}</p>
-        <p>{{ session.date }}</p>
+        <h1 class="text-2xl font-bold">{{ documentTitle }}</h1>
+        <h2 class="text-xl">{{ organizationName }}</h2>
+        <p>Session #{{ session.number }} {{ session.type ? '– ' + session.type : '' }}</p>
+        <p>{{ session.date | date:'MMMM d, y' }}</p>
+        <p>{{ session.time }} to {{ session.endTime || 'End' }}</p>
+        <p>
+          <lucide-icon name="MapPin" class="inline h-4 w-4"></lucide-icon>
+          {{ session.location }} ({{ session.modality }})
+        </p>
+        <p>Quorum: {{ session.quorum }} ({{ presentCount }} of {{ session.attendees?.length || 0 }} present)</p>
       </div>
 
       <!-- 1. MEETING DETAILS -->
@@ -66,7 +82,7 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <p class="font-medium">Date and Time:</p>
-            <p>{{ session.date }}, {{ session.time }} to {{ session.endTime }}</p>
+            <p>{{ session.date | date:'MMMM d, y' }}, {{ session.time }} to {{ session.endTime || 'TBD' }}</p>
           </div>
           <div>
             <p class="font-medium">Location:</p>
@@ -77,7 +93,7 @@
           </div>
           <div>
             <p class="font-medium">Quorum:</p>
-            <p>{{ session.quorum }} ({{ presentCount }} of {{ attendees.length }} present)</p>
+            <p>{{ session.quorum }} ({{ presentCount }} of {{ attendees?.length || 0 }} present)</p>
           </div>
           <div>
             <p class="font-medium">Meeting Duration:</p>
@@ -150,14 +166,14 @@
         <div class="space-y-2">
           <p class="font-medium">Minutes Prepared By:</p>
           <div class="h-12 border-b"></div>
-          <p>Robert Johnson, Secretary</p>
+          <p>{{ preparedBy || 'Enter name in settings' }}</p>
           <p>Date: {{ today | date:'MM/dd/yyyy' }}</p>
         </div>
         <div class="space-y-2">
           <p class="font-medium">Approved By:</p>
           <div class="h-12 border-b"></div>
-          <p>John Doe, Chairperson</p>
-          <p>Date: ____________________</p>
+          <p>{{ approvedBy || 'Enter name in settings' }}</p>
+          <p>Date: {{ approvalDate || '____________________' }}</p>
         </div>
       </div>
 
@@ -226,6 +242,29 @@
           <input type="checkbox" class="h-4 w-4" [(ngModel)]="includeSignatures"/>
           <span>Include Signature Lines</span>
         </label>
+      </div>
+
+      <hr class="border-gray-200"/>
+
+      <!-- Signature options -->
+      <div class="space-y-4">
+        <h4 class="font-medium">Signature Settings</h4>
+        
+        <div class="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-sm font-medium">Minutes Prepared By</label>
+            <input class="w-full border rounded p-2" [(ngModel)]="preparedBy" placeholder="Name and position"/>
+          </div>
+          <div>
+            <label class="block text-sm font-medium">Approved By</label>
+            <input class="w-full border rounded p-2" [(ngModel)]="approvedBy" placeholder="Name and position"/>
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-sm font-medium">Approval Date</label>
+          <input type="date" class="w-full border rounded p-2" [(ngModel)]="approvalDate"/>
+        </div>
       </div>
 
       <hr class="border-gray-200"/>
