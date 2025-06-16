@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule }       from '@angular/common';
 import { FormsModule }        from '@angular/forms';
 import { LucideAngularModule }from 'lucide-angular';
+import { saveAs } from 'file-saver';
 
 import { MemberService, Member } from '../../services/member.service';
 
@@ -124,6 +125,31 @@ export class MembersComponent implements OnInit {
     this.svc.delete(this.selectedId).subscribe({
       next: () => { this.isDeleteOpen = false; this.reload(); },
       error: console.error
+    });
+  }
+
+  // — CSV download —
+  downloadAll() {
+    this.svc.list().subscribe(users => {
+      // CSV headers
+      const header = ['Name','Position','Email','Role','Status'];
+      const rows = users.map(u => [
+        `${u.firstName} ${u.lastName}`,
+        u.position,
+        u.email,
+        u.position,
+        u.status
+      ]);
+
+      // build CSV string
+      const csv = [
+        header.join(','),
+        ...rows.map(r => r.map(cell => `"${cell.replace(/"/g,'""')}"`).join(','))
+      ].join('\r\n');
+
+      // trigger download
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      saveAs(blob, 'members.csv');
     });
   }
 }

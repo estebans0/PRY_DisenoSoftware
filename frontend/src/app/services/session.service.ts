@@ -10,7 +10,8 @@ export interface Session {
   type: string;
   date:   string;
   time:   string;
-  // …etc
+  status: string; // 'scheduled', 'in progress', 'completed', 'cancelled'
+  quorum: string;
 }
 
 @Injectable({ providedIn: 'root' })

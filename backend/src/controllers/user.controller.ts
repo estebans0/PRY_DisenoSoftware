@@ -180,6 +180,12 @@ export const login: RequestHandler = async (req, res) => {
       return;
     }
 
+    // Inactive user check
+    if (user.status === 'Inactive') {
+      res.status(403).json({ message: 'Your account is inactive. Please contact your administrator.' });
+      return;
+    }
+
     // 3) Sign & return
     const token = signToken(user);
     res.json({
