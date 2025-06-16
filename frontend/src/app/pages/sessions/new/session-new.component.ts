@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
+import { SessionService } from '../../../services/session.service';
+import { MemberService }  from '../../../services/member.service';
 
 @Component({
   selector: 'app-session-new',
@@ -19,6 +21,8 @@ import { LucideAngularModule } from 'lucide-angular';
 export class SessionNewComponent {
   activeTab: 'details'|'attendees'|'agenda'|'documents' = 'details';
   date?: string;
+  members: any[] = [];  // Lista de miembros desde la API
+  selectedMembers: number[] = [];
 
   // form state
   sessionData = {
@@ -31,17 +35,19 @@ export class SessionNewComponent {
   };
 
   // Hay que adaptar esto para que haga un fetch a la API y obtenga los miembros
-  members = [
-    { id:1, name:'John Doe',       position:'Chairperson',      email:'john.doe@example.com' },
-    { id:2, name:'Jane Smith',     position:'Vice Chairperson', email:'jane.smith@example.com' },
-    { id:3, name:'Robert Johnson', position:'Secretary',        email:'robert.johnson@example.com' },
-    { id:4, name:'Emily Davis',    position:'Treasurer',        email:'emily.davis@example.com' },
-    { id:5, name:'Michael Wilson', position:'Board Member',     email:'michael.wilson@example.com' },
-    { id:6, name:'Sarah Thompson', position:'Board Member',     email:'sarah.thompson@example.com' },
-    { id:7, name:'David Martinez', position:'Board Member',     email:'david.martinez@example.com' },
-    { id:8, name:'Jennifer Garcia',position:'Board Member',     email:'jennifer.garcia@example.com' },
-  ];
-  selectedMembers = this.members.map(m => m.id);
+  ngOnInit() {
+    this.memberSvc.list().subscribe({
+      next: (data) => {
+        this.members = data.map(member => ({
+          name: member.firstName || 'Unknown',
+          position: member.position || 'Not specified',
+          email: member.email || 'No email'
+        }));
+        this.selectedMembers = this.members.map(m => m.name); // Seleccionar automáticamente
+      },
+      error: (err) => console.error('Error obteniendo miembros:', err)
+    });
+  }
 
   // ** Guest state **
   guests: Array<{ id: number; name?: string; email: string }> = [];
@@ -123,25 +129,56 @@ export class SessionNewComponent {
   }
 
   // final actions
-  constructor(private router: Router) {}
+  constructor(private router: Router, private sessionSvc: SessionService, private memberSvc: MemberService) {}
   handleSubmit() {
-    console.log('Creating new session', {
-      ...this.sessionData,
-      date: this.date,
-      attendees: this.selectedMembers,
-      guests: this.guests,
-      agenda: this.agendaItems
-    });
-    this.router.navigate(['/sessions']);
+  const newSession = {
+    ...this.sessionData,
+    date: this.date,
+    attendees: this.selectedMembers,
+    guests: this.guests,
+    agenda: this.agendaItems.map(item => ({
+      Orden: item.id,  // Asegurar orden
+      Titulo: item.title || 'Sin título',  // Evitar undefined
+      Presenter: item.presenter || 'Desconocido', // Evitar undefined
+      Duration: item.duration ?? 15, // Valor por defecto
+      EstimatedTime: item.duration ?? 15, // Asignar tiempo estimado
+    }))
+  };
+
+  // Validar antes de enviar
+  if (!newSession.date || !newSession.attendees.length) {
+    console.error('Error: La sesión requiere una fecha y asistentes.');
+    return;
   }
-  handleSaveAndSend() {
-    console.log('Creating new session & sending notice', {
-      ...this.sessionData,
-      date: this.date,
-      attendees: this.selectedMembers,
-      guests: this.guests,
-      agenda: this.agendaItems
-    });
-    this.router.navigate(['/sessions']);
-  }
+
+
+  this.sessionSvc.createSession(newSession).subscribe({
+    next: () => this.router.navigate(['/sessions']),
+    error: (err) => console.error('Error creando sesión:', err)
+  });
+}
+
+handleSaveAndSend() {
+  const newSession = {
+    ...this.sessionData,
+    date: this.date,
+    attendees: this.selectedMembers,
+    guests: this.guests,
+    agenda: this.agendaItems.map(item => ({
+      Orden: item.id,
+      Titulo: item.title || 'Sin título',
+      Presenter: item.presenter || 'Desconocido',
+      Duration: item.duration ?? 15,
+      EstimatedTime: item.duration ?? 15,
+    }))
+  };
+
+  this.sessionSvc.createSession(newSession).subscribe({
+    next: (createdSession) => {
+      console.log('Sesión creada, enviando notificación...');
+      this.router.navigate(['/sessions']);
+    },
+    error: (err) => console.error('Error creando sesión:', err)
+  });
+}
 }
