@@ -1,10 +1,14 @@
 // src/app/app.config.ts
-import { ApplicationConfig, importProvidersFrom, provideZoneChangeDetection } from '@angular/core';
+import {
+  ApplicationConfig,
+  importProvidersFrom,
+  provideZoneChangeDetection
+} from '@angular/core';
 import { provideRouter } from '@angular/router';
 
 import {
   LucideAngularModule,
-  // existing
+  // existing icons …
   ClipboardList,
   ArrowRight,
   Eye,
@@ -21,28 +25,26 @@ import {
   Moon,
   User,
   UserPlus,
-  // session-detail / dashboard / common
   Edit,
   Play,
   MapPin,
   Video,
   Send,
   Download,
-  // session-minutes
   Printer,
-  // session-edit / new session
   FileUp,
   Plus,
   Save,
   Trash2,
   XCircle,
-  // session-start
   Pause,
   ChevronDown,
   ChevronUp,
   Square,
-  // profile
   Camera,
+  // ADD these two for the sessions page
+  Search,
+  // (no need for MoreHorizontal unless you end up using the dropdown menu approach)
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -53,7 +55,6 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes),
     importProvidersFrom(
       LucideAngularModule.pick({
-        // base icons
         ClipboardList,
         ArrowRight,
         Eye,
@@ -70,33 +71,24 @@ export const appConfig: ApplicationConfig = {
         Moon,
         User,
         UserPlus,
-
-        // detail/dashboard/common
         Edit,
         Play,
         MapPin,
         Video,
         Send,
         Download,
-
-        // minutes page
         Printer,
-
-        // edit / new
         FileUp,
         Plus,
         Save,
         Trash2,
         XCircle,
-
-        // start/execution
         Pause,
         ChevronDown,
         ChevronUp,
         Square,
-
-        // profile
-        Camera
+        Camera,
+        Search,
       })
     )
   ]

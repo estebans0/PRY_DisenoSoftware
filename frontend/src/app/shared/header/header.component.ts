@@ -1,13 +1,16 @@
-import { Component }       from '@angular/core';
-import { CommonModule }    from '@angular/common';
-import { Router, NavigationEnd } from '@angular/router';
-import { LucideAngularModule }   from 'lucide-angular';
+// src/app/components/header/header.component.ts
+import { Component }                from '@angular/core';
+import { CommonModule }             from '@angular/common';
+import { Router, NavigationEnd }    from '@angular/router';
+import { LucideAngularModule }      from 'lucide-angular';
+import { RouterModule }             from '@angular/router';
 
 @Component({
   standalone: true,
   selector: 'app-header',
   imports: [
     CommonModule,
+    RouterModule,
     LucideAngularModule
   ],
   templateUrl: './header.component.html',
@@ -19,11 +22,11 @@ export class HeaderComponent {
   profileMenu = false;
 
   constructor(private router: Router) {
-    // show public header only on '/', '/login', '/register'
-    router.events.subscribe(evt => {
+    // public header only on '/', '/login', '/register'
+    this.router.events.subscribe(evt => {
       if (evt instanceof NavigationEnd) {
-        const pub = ['/', '/login', '/register'];
-        this.showAuthHeader = pub.includes(evt.urlAfterRedirects);
+        this.showAuthHeader = ['/', '/login', '/register']
+          .includes(evt.urlAfterRedirects);
       }
     });
   }
@@ -35,5 +38,19 @@ export class HeaderComponent {
 
   toggleProfileMenu() {
     this.profileMenu = !this.profileMenu;
+  }
+
+  /** Navigate to /profile and close menu */
+  goToProfile() {
+    this.profileMenu = false;
+    this.router.navigate(['/profile']);
+  }
+
+  /** Log out: clear token + redirect to /login */
+  logout() {
+    // clear any auth storage (e.g. JWT)
+    localStorage.removeItem('token');
+    this.profileMenu = false;
+    this.router.navigate(['/login']);
   }
 }

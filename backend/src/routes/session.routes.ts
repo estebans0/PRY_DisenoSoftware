@@ -32,27 +32,15 @@ router.post('/:id/agenda', SessionController.addAgendaItems);
 router.put('/:id/agenda', SessionController.updateAgenda);
 router.delete('/:id/agenda/:itemId', SessionController.removeAgendaItem);
 
-// Document management routes
-router.post('/sessions/number/:number/agenda/:orden/documents', 
-  upload.single('file'), 
-  DocumentController.uploadDocument
-);
-
-router.get('/sessions/number/:number/agenda/:orden/documents', 
-  DocumentController.listDocuments
-);
-
-router.get('/sessions/number/:number/agenda/:orden/documents/:index', 
-  DocumentController.downloadDocument
-);
-
-router.delete('/sessions/number/:number/agenda/:orden/documents/:index', 
-  DocumentController.deleteDocument
-);
-
-// Minutes information routes
-router.put('/sessions/number/:number/minutes-info', 
-  DocumentController.updateMinutesInfo
-);
+// session endpoints
+router.get( '/',     SessionController.list);
+router.post('/',     SessionController.create);
+router.get( '/:id', SessionController.getOne);
+router.put('/:id', SessionController.update);
+router.delete('/:id', SessionController.remove);
+router.post("/:id/start", SessionController.startSession); // Nueva ruta
+router.post("/:id/end", SessionController.endSession); // Nueva ruta
+router.post('/guests', SessionController.addGuest);
+router.delete('/:guestId', SessionController.removeGuest);
 
 export default router;

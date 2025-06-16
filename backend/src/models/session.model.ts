@@ -33,6 +33,12 @@ interface IAgendaItem {
   SupportingDocuments?: ISupportingDocument[];
 }
 
+interface IGuest {
+  id: number;
+  name?: string;
+  email: string;
+}
+
 export interface ISession extends Document {
   SessionID: ObjectId;
   number: string;
@@ -41,9 +47,9 @@ export interface ISession extends Document {
   endTime?: string;
   modality: string;
   location: string;
-  quorum: number;
+  quorum: string;
   attendees: { email: string; status: string; role?: string }[]; // Changed memberId to email
-  guests?: { name: string; email: string; organization?: string }[];
+  guests?: IGuest[];
   agenda: IAgendaItem[];
   type?: string;
   status?: string;
@@ -83,7 +89,7 @@ const SessionSchema = new Schema<ISession>({
   endTime: String,
   modality: String,
   location: String,
-  quorum: { type: Number, default: 0 },
+  quorum: String,
   attendees: [{ 
     email: String, // Changed from memberId to email
     status: String,
@@ -101,5 +107,3 @@ const SessionSchema = new Schema<ISession>({
 }, { timestamps: true });
 
 export const Session = model<ISession>('Session', SessionSchema);
-
-

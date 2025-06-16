@@ -156,7 +156,64 @@ export const remove: RequestHandler = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+}
+ // Matias Leer
+export const startSession: RequestHandler = async (req, res, next) => {
+  try {
+    const session = await SessionService.startSession(req.params.id);
+    if (!session) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
 };
+
+export const endSession: RequestHandler = async (req, res, next) => {
+  try {
+    const { agenda } = req.body;
+    const session = await SessionService.endSession(req.params.id, agenda);
+    if (!session) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/** Agregar un invitado a una sesión */
+export const addGuest: RequestHandler = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const { name, email } = req.body;
+
+    if (!name || !email) {
+      res.status(400).json({ message: "Guest name and email are required" });
+      return;
+    }
+
+    const updatedSession = await SessionService.addGuestToSession(sessionId, { name, email });
+    
+    res.json(updatedSession);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const removeGuest: RequestHandler = async (req, res, next) => {
+  try {
+    const { sessionId, guestId } = req.params;
+    const updatedSession = await SessionService.removeGuestFromSession(sessionId, Number(guestId));
+    res.json(updatedSession);
+  } catch (err) {
+    next(err);
+  }
+};
+
 
 // Get session by number
 export const getOneByNumber: RequestHandler = async (req, res, next) => {

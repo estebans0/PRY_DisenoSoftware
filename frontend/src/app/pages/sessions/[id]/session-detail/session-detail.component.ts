@@ -1,8 +1,8 @@
-// src/app/pages/sessions/[id]/session-detail/session-detail.component.ts
 import { Component, OnInit }            from '@angular/core';
 import { CommonModule }                 from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { LucideAngularModule }          from 'lucide-angular';
+import { SessionService }                from '../../../../services/session.service';
 
 @Component({
   selector: 'app-session-detail',
@@ -44,17 +44,99 @@ export class SessionDetailComponent implements OnInit {
   declinedCount  = 0;
   totalDuration  = 0;
 
-  constructor(private route: ActivatedRoute) {}
+  constructor(
+    private route: ActivatedRoute,
+    private router: Router,
+    private sessionService: SessionService
+  ) {}
 
   ngOnInit(): void {
-    // load before first render
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam === 'new') {
       window.location.href = '/sessions/new';
       return;
     }
     this.sessionId = Number(idParam);
-    this.loadMockData();
+    
+    // Cargar datos reales de la sesión
+    this.loadSessionData();
+  }
+  loadSessionData(): void {
+    this.sessionService.get(this.sessionId.toString()).subscribe(
+      (session: any) => {
+        this.session = {
+          id: session._id,
+          number: session.number,
+          type: session.type,
+          date: session.date,
+          time: session.time,
+          status: session.status === 'completed' ? 'Completed' : 
+                 session.status === 'in-progress' ? 'In Progress' : 'Scheduled',
+          quorum: this.calculateQuorum(session),
+          modality: session.modality,
+          location: session.location,
+          description: session.description || '',
+          createdBy: 'Admin', // Puedes obtener esto de session.createdBy si lo tienes
+          createdAt: session.createdAt || new Date().toISOString()
+        };
+        
+        this.attendees = session.attendees.map((a: { memberId: any; name: any; position: any; status: string; }) => ({
+          id: a.memberId,
+          name: a.name || 'Member',
+          position: a.position || 'Board Member',
+          status: this.mapStatus(a.status)
+        }));
+        
+        this.agenda = session.agenda.map((item: { title: any; presenter: any; duration: any; documents: any; }, index: number) => ({
+          id: index + 1,
+          title: item.title,
+          presenter: item.presenter,
+          duration: item.duration,
+          documents: item.documents || []
+        }));
+        
+        this.updateCounts();
+      },
+      (err: any) => {
+        console.error('Error loading session', err);
+       
+        this.loadMockData(); // Fallback a datos mock si hay error
+      }
+    );
+  }
+
+  private calculateQuorum(session: any): string {
+    const presentCount = session.attendees.filter((a: { status: string; }) => a.status === 'present').length;
+    const total = session.attendees.length;
+    return presentCount >= Math.ceil(total / 2) ? 'Achieved' : 'Pending';
+  }
+
+  private mapStatus(status: string): string {
+    switch (status) {
+      case 'present': return 'Confirmed';
+      case 'absent': return 'Declined';
+      case 'confirmed': return 'Confirmed';
+      case 'pending': return 'Pending';
+      case 'declined': return 'Declined';
+      default: return 'Pending';
+    }
+  }
+
+  private updateCounts(): void {
+    this.confirmedCount = this.attendees.filter(a => a.status === 'Confirmed').length;
+    this.pendingCount = this.attendees.filter(a => a.status === 'Pending').length;
+    this.declinedCount = this.attendees.filter(a => a.status === 'Declined').length;
+    this.totalDuration = this.agenda.reduce((sum, item) => sum + item.duration, 0);
+  }
+
+  /** navigate to /sessions/:id/edit */
+  goToEdit() {
+    this.router.navigate(['/sessions', this.sessionId, 'edit']);
+  }
+
+  /** navigate to /sessions/:id/start */
+  goToStart() {
+    this.router.navigate(['/sessions', this.sessionId, 'start']);
   }
 
   private loadMockData() {

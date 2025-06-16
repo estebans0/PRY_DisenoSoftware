@@ -4,9 +4,18 @@ import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
 
-@Injectable({
-  providedIn: 'root'
-})
+export interface Session {
+  _id?: string;
+  number: string;
+  type: string;
+  date:   string;
+  time:   string;
+  status: string; // 'scheduled', 'in progress', 'completed', 'cancelled'
+  quorum: string;
+  attendees?: string[];
+}
+
+@Injectable({ providedIn: 'root' })
 export class SessionService {
   private base = `${environment.apiUrl}/sessions`;
 
@@ -51,4 +60,11 @@ export class SessionService {
   removeAttendee(sessionId: string, attendeeId: string): Observable<any> {
     return this.http.delete<any>(`${this.base}/${sessionId}/attendees/${attendeeId}`);
   }
+  startSession(sessionId: string): Observable<any> {
+    return this.http.post(`${this.base}/${sessionId}/start`, {});
+  }
+
+  endSession(sessionId: string, agenda: any[]): Observable<any> {
+    return this.http.post(`${this.base}/${sessionId}/end`, { agenda });
+}
 }

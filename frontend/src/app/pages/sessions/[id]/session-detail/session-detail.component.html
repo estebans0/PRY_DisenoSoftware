@@ -23,11 +23,13 @@
     <div class="flex items-center gap-2">
       <button
         *ngIf="session.status==='Scheduled'"
+        (click)="goToEdit()"
         class="px-4 py-2 border rounded flex items-center gap-1 text-sm">
         <lucide-icon name="Edit" class="h-4 w-4"></lucide-icon>Edit
       </button>
       <button
         *ngIf="session.status==='Scheduled'"
+        (click)="goToStart()"
         class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm">
         <lucide-icon name="Play" class="h-4 w-4"></lucide-icon>Start Session
       </button>

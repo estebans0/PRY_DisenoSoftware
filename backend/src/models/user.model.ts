@@ -1,5 +1,4 @@
 // backend/src/models/user.model.ts
-
 import { Schema, model, Document, ObjectId } from 'mongoose';
 import bcrypt from 'bcrypt';
 
@@ -9,10 +8,11 @@ export interface User extends Document {
   firstName: string;
   lastName: string;
   email: string;
-  position: string;
   tipoUsuario: 'ADMINISTRADOR' | 'USUARIO';
+  position: string;
   organization: string;
   password: string;
+  status: 'Active' | 'Inactive';
 
   // Instance method to compare plaintext vs hashed password
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -22,70 +22,49 @@ export interface User extends Document {
 const userSchema = new Schema<User>(
   {
     userID: { type: Schema.Types.ObjectId, auto: true },
-    firstName: {
-      type: String,
+
+    firstName:     { type: String, required: true, trim: true },
+    lastName:      { type: String, required: true, trim: true },
+    email:         { type: String, required: true, unique: true, lowercase: true, trim: true },
+
+    tipoUsuario:   {
+      type:     String,
       required: true,
-      trim: true,
+      enum:     { values: ['ADMINISTRADOR', 'USUARIO'] },
+      default:  'USUARIO'
     },
-    lastName: {
-      type: String,
+
+    position:      { type: String, required: true, trim: true, default: 'Unassigned' },
+    organization:  { type: String, required: true, trim: true, default: 'Unassigned' },
+
+    password:      { type: String, required: true },
+
+    status:        {
+      type:     String,
       required: true,
-      trim: true,
-    },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-    },
-    tipoUsuario: {
-    type: String,
-    required: true,
-    enum: {
-      values: ['ADMINISTRADOR', 'USUARIO'],
-    }
-  },
-    position: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    organization: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    password: {
-      type: String,
-      required: true,
+      enum:     { values: ['Active','Inactive'] },
+      default:  'Active'
     },
   },
-  {
-    timestamps: true, // Optional: adds createdAt / updatedAt
-  }
+  { timestamps: true } // adds createdAt / updatedAt
 );
 
-// 3) Before saving, hash the password if it’s new or modified
+// 3) Hash password
 userSchema.pre<User>('save', async function (next) {
-  if (!this.isModified('password')) {
-    return next();
-  }
+  if (!this.isModified('password')) return next();
   try {
-    const saltRounds = 10;
-    const salt = await bcrypt.genSalt(saltRounds);
-    const hash = await bcrypt.hash(this.password, salt);
-    this.password = hash;
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
     next();
   } catch (err) {
     next(err as any);
   }
 });
 
-// 4) Instance method to compare a plaintext password to the stored hash
+// 4) Compare method
 userSchema.methods.comparePassword = async function (candidatePassword: string) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// 5) Create and export the Mongoose model
+// 5) Export
 export const UserModel = model<User>('User', userSchema);

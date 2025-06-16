@@ -22,9 +22,10 @@ export interface AuthResponse {
     firstName: string;
     lastName: string;
     email: string;
+    tipoUsuario: 'ADMINISTRADOR' | 'USUARIO';
     position: string;
     organization: string;
-    // any other fields…
+    status: 'Active' | 'Inactive';
   };
 }
 
