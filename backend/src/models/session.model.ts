@@ -13,11 +13,7 @@ export interface ISession extends Document {
   time: string;
   modality: string;
   location: string;
-<<<<<<< HEAD
   quorum: string;
-=======
-  quorum: numbe
->>>>>>> e81ff1d800092df0914524e1f1c984dfc5b412cc
   attendees: { memberId: string; status: string }[];
   agenda: { title: string; presenter: string; duration: number }[];
   guests: IGuest[];
