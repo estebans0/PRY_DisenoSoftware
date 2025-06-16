@@ -1,5 +1,11 @@
 import { Schema, model, Document, ObjectId } from 'mongoose';
 
+interface IGuest {
+  id: number;
+  name?: string;
+  email: string;
+}
+
 export interface ISession extends Document {
   SessionID: ObjectId;
   number: string;
@@ -7,7 +13,10 @@ export interface ISession extends Document {
   time: string;
   modality: string;
   location: string;
-  quorum: number;
+  quorum: numbe
+  attendees: { memberId: string; status: string }[];
+  agenda: { title: string; presenter: string; duration: number }[];
+  guests: IGuest[];
   status: 'scheduled' | 'in-progress' | 'completed'; // Nuevo campo de estado
   attendees: { 
     memberId: string; 
@@ -38,6 +47,8 @@ const SessionSchema = new Schema<ISession>({
   modality:   String,
   location:   String,
   quorum:     { type: Number, default: 0 },
+  attendees:  [{ memberId: String, status: String }],
+  guests: [{id: Number, name: String, email :{ type: String, required: true } }],
   status:     { type: String, enum: ['scheduled', 'in-progress', 'completed'], default: 'scheduled' },
   startTime:  Date,
   endTime:    Date,
@@ -60,7 +71,6 @@ const SessionSchema = new Schema<ISession>({
       description: String,
       assignee: String
     }]
-  }]
 }, { timestamps: true });
 
 export const Session = model<ISession>('Session', SessionSchema);

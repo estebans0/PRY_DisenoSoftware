@@ -28,4 +28,29 @@ export const endSession = async (id: string, agendaItems: any[]) => {
     endTime: new Date(),
     agenda: agendaItems
   }, { new: true });
+
 };
+
+/** Agregar un invitado a una sesión */
+export const addGuestToSession = async (sessionId: string, guest: { name: string; email: string }) => {
+  const session = await Session.findById(sessionId);
+  if (!session) throw new Error('Session not found');
+
+  const newGuest = { id: session.guests.length + 1, name: guest.name, email: guest.email };
+  session.guests.push(newGuest);
+  await session.save();
+  return session;
+};
+
+/** Eliminar un invitado de una sesión */
+export const removeGuestFromSession = async (sessionId: string, guestId: number) => {
+  const session = await Session.findById(sessionId);
+  if (!session) throw new Error('Session not found');
+
+  session.guests = session.guests.filter(g => g.id !== guestId);
+  await session.save();
+  return session;
+};
+
+};
+
