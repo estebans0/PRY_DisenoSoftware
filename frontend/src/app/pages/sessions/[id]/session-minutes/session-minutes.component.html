@@ -73,7 +73,7 @@
           <lucide-icon name="MapPin" class="inline h-4 w-4"></lucide-icon>
           {{ session.location }} ({{ session.modality }})
         </p>
-        <p>Quorum: {{ session.quorum }} ({{ presentCount }} of {{ session.attendees?.length || 0 }} present)</p>
+        <p>Quorum: {{ session.quorum }} ({{ presentCount }} of {{ session.attendees.length || 0 }} present)</p>
       </div>
 
       <!-- 1. MEETING DETAILS -->
@@ -93,7 +93,7 @@
           </div>
           <div>
             <p class="font-medium">Quorum:</p>
-            <p>{{ session.quorum }} ({{ presentCount }} of {{ attendees?.length || 0 }} present)</p>
+            <p>{{ session.quorum }} ({{ presentCount }} of {{ attendees.length || 0 }} present)</p>
           </div>
           <div>
             <p class="font-medium">Meeting Duration:</p>

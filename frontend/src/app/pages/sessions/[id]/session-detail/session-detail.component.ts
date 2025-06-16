@@ -62,7 +62,7 @@ export class SessionDetailComponent implements OnInit {
     this.loadSessionData();
   }
   loadSessionData(): void {
-    this.sessionService.get(this.sessionId.toString()).subscribe(
+    this.sessionService.getSession(this.sessionId.toString()).subscribe(
       (session: any) => {
         this.session = {
           id: session._id,
