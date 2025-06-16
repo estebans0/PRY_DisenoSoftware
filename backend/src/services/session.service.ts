@@ -13,4 +13,19 @@ export const updateSession = async (id: string, data: Partial<ISession>) => {
 export const deleteSession = async (id: string) => {
   return Session.findByIdAndDelete(id);
 };
-// add updateSession, deleteSession...
+
+// Nuevos métodos para manejar el estado de la sesión
+export const startSession = async (id: string) => {
+  return Session.findByIdAndUpdate(id, {
+    status: 'in-progress',
+    startTime: new Date()
+  }, { new: true });
+};
+
+export const endSession = async (id: string, agendaItems: any[]) => {
+  return Session.findByIdAndUpdate(id, {
+    status: 'completed',
+    endTime: new Date(),
+    agenda: agendaItems
+  }, { new: true });
+};

@@ -1,4 +1,4 @@
-import express  from "express";
+import express from "express";
 import * as sessionController from "../controllers/session.controller";
 
 const router = express.Router();
@@ -8,5 +8,7 @@ router.post("/create", sessionController.create);
 router.get("/:id", sessionController.getOne);
 router.put("/:id", sessionController.update);
 router.delete("/:id", sessionController.remove);
+router.post("/:id/start", sessionController.startSession); // Nueva ruta
+router.post("/:id/end", sessionController.endSession); // Nueva ruta
 
 export default router;

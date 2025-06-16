@@ -8,8 +8,26 @@ export interface ISession extends Document {
   modality: string;
   location: string;
   quorum: number;
-  attendees: { memberId: string; status: string }[];
-  agenda: { title: string; presenter: string; duration: number }[];
+  status: 'scheduled' | 'in-progress' | 'completed'; // Nuevo campo de estado
+  attendees: { 
+    memberId: string; 
+    status: 'confirmed' | 'pending' | 'declined' | 'present' | 'absent'; // Estados ampliados
+  }[];
+  agenda: { 
+    title: string; 
+    presenter: string; 
+    duration: number;
+    notes?: string;
+    voting?: {
+      inFavor: number;
+      against: number;
+      abstain: number;
+      result: string;
+    };
+    tasks?: Array<{ description: string; assignee: string }>;
+  }[];
+  startTime?: Date;
+  endTime?: Date;
 }
 
 const SessionSchema = new Schema<ISession>({
@@ -20,9 +38,29 @@ const SessionSchema = new Schema<ISession>({
   modality:   String,
   location:   String,
   quorum:     { type: Number, default: 0 },
-  attendees:  [{ memberId: String, status: String }],
+  status:     { type: String, enum: ['scheduled', 'in-progress', 'completed'], default: 'scheduled' },
+  startTime:  Date,
+  endTime:    Date,
+  attendees:  [{ 
+    memberId: String, 
+    status: { type: String, enum: ['confirmed', 'pending', 'declined', 'present', 'absent'] }
+  }],
+  agenda:     [{
+    title: String,
+    presenter: String,
+    duration: Number,
+    notes: String,
+    voting: {
+      inFavor: Number,
+      against: Number,
+      abstain: Number,
+      result: String
+    },
+    tasks: [{
+      description: String,
+      assignee: String
+    }]
+  }]
 }, { timestamps: true });
 
 export const Session = model<ISession>('Session', SessionSchema);
-
-
