@@ -1,15 +1,17 @@
 import express  from "express";
-import * as SessionCtrl from '../controllers/session.controller'
+import * as sessionController from '../controllers/session.controller'
 
 const router = express.Router()
 
 // session endpoints
-router.get( '/',     SessionCtrl.list);
-router.post('/',     SessionCtrl.create);
-router.get( '/:id', SessionCtrl.getOne);
-router.put('/:id', SessionCtrl.update);
-router.delete('/:id', SessionCtrl.remove);
-router.post('/guests', SessionCtrl.addGuest);
-router.delete('/:guestId', SessionCtrl.removeGuest);
+router.get( '/',     sessionController.list);
+router.post('/',     sessionController.create);
+router.get( '/:id', sessionController.getOne);
+router.put('/:id', sessionController.update);
+router.delete('/:id', sessionController.remove);
+router.post("/:id/start", sessionController.startSession); // Nueva ruta
+router.post("/:id/end", sessionController.endSession); // Nueva ruta
+router.post('/guests', sessionController.addGuest);
+router.delete('/:guestId', sessionController.removeGuest);
 
 export default router

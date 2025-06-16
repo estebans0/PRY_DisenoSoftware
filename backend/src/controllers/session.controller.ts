@@ -79,6 +79,33 @@ export const remove: RequestHandler = async (req, res, next) => {
   }
 };
 
+// Matias Leer
+export const startSession: RequestHandler = async (req, res, next) => {
+  try {
+    const session = await SessionService.startSession(req.params.id);
+    if (!session) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const endSession: RequestHandler = async (req, res, next) => {
+  try {
+    const { agenda } = req.body;
+    const session = await SessionService.endSession(req.params.id, agenda);
+    if (!session) {
+      res.sendStatus(404);
+      return;
+    }
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+};
 
 /** Agregar un invitado a una sesión */
 export const addGuest: RequestHandler = async (req, res, next) => {
