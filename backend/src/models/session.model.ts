@@ -1,109 +1,102 @@
-import { Schema, model, Document, ObjectId } from 'mongoose';
+// backend/src/models/session.model.ts
+import { Schema, model, Document, Types } from 'mongoose';
 
-// Action interface
-interface IAction {
-  TipoAccion: string;
-  Descripcion: string;
-  Responsable?: string;
-  DueDate?: Date;
-  Estado?: string;
-}
+// --- Supporting sub‐schemas ---
 
-// Document interface for storing in SupportingDocuments
-interface ISupportingDocument {
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  filePath: string;
-  uploadDate: Date;
-}
+const AttendeeSchema = new Schema({
+  name:      { type: String, required: true },
+  email:     { type: String, required: true },
+  status:    { type: String, enum: ['Confirmed','Pending','Declined'], default: 'Pending' },
+  role:      { type: String, default: 'Guest' },
+}, { _id: true });
 
-// AgendaItem interface
-interface IAgendaItem {
-  _id?: any; // Keep for TypeScript compatibility
-  Orden: number;
-  Titulo: string;
-  Duration: number;
-  Presenter: string;
-  Notas: string;
-  Pro: number;
-  Against: number;
-  EstimatedTime: number;
-  Actions?: IAction[];
-  SupportingDocuments?: ISupportingDocument[];
-}
+const ActionSchema = new Schema({
+  description: { type: String, required: true },
+  assignee:    {
+    _id:   { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+    name:  { type: String, required: true }
+  },
+  dueDate:     { type: Date }
+}, { _id: true });
 
-interface IGuest {
-  id: number;
-  name?: string;
-  email: string;
-}
+const DocumentSchema = new Schema({
+  fileName:   { type: String, required: true },
+  fileType:   { type: String, required: true },
+  fileSize:   { type: Number, required: true },
+  filePath:   { type: String, required: true },
+  uploadDate: { type: Date,   required: true, default: () => new Date() }
+}, { _id: true });
+
+const AgendaItemSchema = new Schema({
+  order:         { type: Number, required: true },
+  title:         { type: String, required: true },
+  duration:      { type: Number, required: true },
+  presenter:     { type: String, required: true },
+  pro:           [AttendeeSchema],
+  against:       [AttendeeSchema],
+  abstained:     [AttendeeSchema],
+  actions:       [ActionSchema],
+  estimatedTime: { type: Number, required: true },
+  documents:     [DocumentSchema]
+}, { _id: true });
+
+const GuestSchema = new Schema({
+  id:    { type: Number, required: true },
+  name:  String,
+  email: { type: String, required: true }
+}, { _id: false });
+
+// --- Main Session schema ---
 
 export interface ISession extends Document {
-  SessionID: ObjectId;
-  number: string;
-  date: Date;
-  time: string;
-  endTime?: string;
-  modality: string;
-  location: string;
-  quorum: string;
-  attendees: { email: string; status: string; role?: string }[]; // Changed memberId to email
-  guests?: IGuest[];
-  agenda: IAgendaItem[];
-  type?: string;
-  status?: string;
+  number:       string;
+  type:         string;
+  date:         Date;
+  time:         string;
+  location:     string;
+  modality:     'In Person' | 'Virtual' | 'Hybrid';
+  status:       'Scheduled' | 'Completed' | 'Cancelled';
+  quorum:       'Pending' | 'Achieved' | 'Not Achieved';
+  createdBy:    { _id: Types.ObjectId; name: string };
+  attendees:    typeof AttendeeSchema[];
   description?: string;
-  minuteMaker?: string; // Email of the person who created the minutes
-  minuteSigner?: string; // Email of the person who signed/approved the minutes
+  guests:       typeof GuestSchema[];
+  agenda:       typeof AgendaItemSchema[];
+  documents?:   typeof DocumentSchema[];   // <— top-level docs
 }
 
-// Action schema
-const ActionSchema = new Schema<IAction>({
-  TipoAccion: { type: String, required: true },
-  Descripcion: { type: String, required: true },
-  Responsable: { type: String },
-  DueDate: { type: Date },
-  Estado: { type: String }
-});
-
-// AgendaItem schema
-const AgendaItemSchema = new Schema<IAgendaItem>({
-  Orden: { type: Number, required: true },
-  Titulo: { type: String, required: true },
-  Duration: { type: Number, required: true },
-  Presenter: { type: String, required: true },
-  Notas: { type: String },
-  Pro: { type: Number, default: 0 },
-  Against: { type: Number, default: 0 },
-  EstimatedTime: { type: Number, required: true },
-  Actions: [ActionSchema],
-  SupportingDocuments: {}
-});
-
 const SessionSchema = new Schema<ISession>({
-  SessionID: { type: Schema.Types.ObjectId, auto: true },
-  number: { type: String, required: true, unique: true },
-  date: { type: Date, required: true },
-  time: String,
-  endTime: String,
-  modality: String,
-  location: String,
-  quorum: String,
-  attendees: [{ 
-    email: String, // Changed from memberId to email
-    status: String,
-    role: String 
-  }],
-  guests: [{
-    name: String,
-    email: String,
-    organization: String
-  }],
-  agenda: [AgendaItemSchema],
-  type: String,
-  status: String,
-  description: String,
-}, { timestamps: true });
+  number:     { type: String, required: true, unique: true },
+  type:       { type: String, required: true },       // ordinary/extraordinary
+  date:       { type: Date,   required: true },
+  time:       { type: String, required: true },
+  location:   { type: String, required: true },
+
+  // ─── NEW ───
+  modality: {
+    type:    String,
+    required:true,
+    enum:    ['In Person','Virtual','Hybrid'],
+    default: 'In Person'
+  },
+
+  status:     { type: String, enum: ['Scheduled','Completed','Cancelled'], default: 'Scheduled' },
+  quorum:     { type: String, enum: ['Pending','Achieved','Not Achieved'], default: 'Pending' },
+  createdBy:  {
+    _id:  { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+    name: { type: String, required: true }
+  },
+
+  attendees:  [AttendeeSchema],
+  description:{ type: String },
+  guests:     [GuestSchema],
+  agenda:     [AgendaItemSchema],
+
+  // ─── NEW ───
+  documents:  [DocumentSchema]
+
+}, {
+  timestamps: true
+});
 
 export const Session = model<ISession>('Session', SessionSchema);
