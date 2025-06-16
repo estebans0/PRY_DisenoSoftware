@@ -68,5 +68,14 @@ export class SessionService {
     return this.http.post(`${this.base}/${sessionId}/end`, { agenda });
   }
 
-  
+  // Agregar invitado a una sesión
+  addGuest(sessionId: string, guest: { name: string; email: string }): Observable<any> {
+    return this.http.post<any>(`${this.base}/${sessionId}/guests`, guest);
+  }
+
+  // Eliminar invitado de una sesión
+  removeGuest(sessionId: string, guestEmail: string): Observable<any> {
+    return this.http.delete<any>(`${this.base}/${sessionId}/guests`, { body: { email: guestEmail } });
+  }
+
 }
