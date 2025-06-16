@@ -7,7 +7,7 @@ export interface ISession extends Document {
   time: string;
   modality: string;
   location: string;
-  quorum: number;
+  quorum: string;
   attendees: { memberId: string; status: string }[];
   agenda: { title: string; presenter: string; duration: number }[];
 }
@@ -19,7 +19,7 @@ const SessionSchema = new Schema<ISession>({
   time:       String,
   modality:   String,
   location:   String,
-  quorum:     { type: Number, default: 0 },
+  quorum:     String,
   attendees:  [{ memberId: String, status: String }],
 }, { timestamps: true });
 

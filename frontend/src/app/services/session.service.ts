@@ -12,6 +12,7 @@ export interface Session {
   time:   string;
   status: string; // 'scheduled', 'in progress', 'completed', 'cancelled'
   quorum: string;
+  attendees?: string[];
 }
 
 @Injectable({ providedIn: 'root' })

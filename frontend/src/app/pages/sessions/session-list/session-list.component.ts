@@ -1,10 +1,14 @@
 // src/app/pages/sessions/session-list/session-list.component.ts
-import { Component, OnInit }    from '@angular/core';
-import { CommonModule }         from '@angular/common';
-import { FormsModule }          from '@angular/forms';
-import { RouterModule }         from '@angular/router';
-import { LucideAngularModule }  from 'lucide-angular';
+import { Component, OnInit }       from '@angular/core';
+import { CommonModule }            from '@angular/common';
+import { FormsModule }             from '@angular/forms';
+import { RouterModule }            from '@angular/router';
+import { LucideAngularModule }     from 'lucide-angular';
+import { forkJoin }                from 'rxjs';
+
 import { SessionService, Session } from '../../../services/session.service';
+import { SettingsService }         from '../../../services/settings.service';
+import { MemberService }           from '../../../services/member.service';
 
 @Component({
   selector: 'app-session-list',
@@ -31,20 +35,33 @@ export class SessionListComponent implements OnInit {
   isDeleteOpen  = false;
   selectedId: string | null = null;
 
-  constructor(private sessionsSvc: SessionService) {}
+  // quorum logic
+  totalMembers = 0;
+  quorumPercentage = 0;
+
+  constructor(
+    private sessionsSvc: SessionService,
+    private settingsSvc: SettingsService,
+    private memberSvc: MemberService
+  ) {}
 
   ngOnInit() {
-    this.reload();
-  }
-
-  reload() {
     this.loading = true;
-    this.sessionsSvc.list().subscribe({
-      next: data => {
-        this.sessions = data;
+    forkJoin({
+      sessions: this.sessionsSvc.list(),
+      settings: this.settingsSvc.get(),
+      members:  this.memberSvc.list()
+    }).subscribe({
+      next: ({ sessions, settings, members }) => {
+        this.sessions = sessions;
+        this.quorumPercentage = settings.quorumPercentage;
+        this.totalMembers = members.length;
         this.loading = false;
       },
-      error: () => this.loading = false
+      error: err => {
+        console.error(err);
+        this.loading = false;
+      }
     });
   }
 
@@ -80,19 +97,14 @@ export class SessionListComponent implements OnInit {
     }
   }
 
-  // — open the confirm‐delete dialog
   openDelete(id: string) {
-    this.selectedId  = id;
+    this.selectedId   = id;
     this.isDeleteOpen = true;
   }
-
-  // — cancel deletion
   cancelDelete() {
     this.isDeleteOpen = false;
     this.selectedId   = null;
   }
-
-  // — actually delete and reload
   doDelete() {
     if (!this.selectedId) return;
     this.sessionsSvc.delete(this.selectedId).subscribe({
@@ -102,5 +114,28 @@ export class SessionListComponent implements OnInit {
       },
       error: console.error
     });
+  }
+  private reload() {
+    this.loading = true;
+    this.sessionsSvc.list().subscribe({
+      next: data => { this.sessions = data; this.loading = false; },
+      error: () => this.loading = false
+    });
+  }
+
+  /**
+   * Quorum status:
+   * - "Pending"   if still scheduled
+   * - "Achieved"  if actual attendees ≥ required
+   * - "Not Achieved" otherwise
+   */
+  getQuorumStatus(s: Session): 'Pending' | 'Achieved' | 'Not Achieved' {
+    if (s.status.toLowerCase() === 'scheduled') {
+      return 'Pending';
+    }
+    // count attendees array length
+    const actual = Array.isArray(s.attendees) ? s.attendees.length : 0;
+    const required = Math.ceil(this.totalMembers * this.quorumPercentage / 100);
+    return actual >= required ? 'Achieved' : 'Not Achieved';
   }
 }

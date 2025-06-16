@@ -1,0 +1,230 @@
+<!-- src/app/pages/settings/settings.component.html -->
+<ng-container *ngIf="!loading; else loadingTpl">
+  <div class="container mx-auto py-6 space-y-6">
+
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+      <h1 class="text-3xl font-bold dark:text-gray-100">Settings</h1>
+      <button
+        class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+        (click)="save()"
+      >
+        <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
+        Save Changes
+      </button>
+    </div>
+
+    <!-- Tabs -->
+    <div class="inline-flex space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="currentTab==='session'
+          ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+        (click)="selectTab('session')"
+      >Session Parameters</button>
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="currentTab==='notifications'
+          ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+        (click)="selectTab('notifications')"
+      >Notifications</button>
+      <button
+        class="px-4 py-2 rounded-lg text-sm"
+        [ngClass]="currentTab==='templates'
+          ? 'bg-white text-gray-900 dark:bg-gray-900 dark:text-gray-100'
+          : 'text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100'"
+        (click)="selectTab('templates')"
+      >Templates</button>
+    </div>
+
+    <!-- Session Parameters -->
+    <div *ngIf="currentTab==='session'" class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-6">
+
+      <!-- Quorum Slider -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="font-medium dark:text-gray-100">Minimum Quorum Percentage</label>
+          <span class="dark:text-gray-100">{{ settings.quorumPercentage }}%</span>
+        </div>
+        <input
+          type="range"
+          min="0" max="100" step="5"
+          [(ngModel)]="settings.quorumPercentage"
+          class="w-full"
+        />
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          The minimum percentage of members required to be present for a valid session.
+        </p>
+      </div>
+
+      <!-- Notice Slider -->
+      <div>
+        <div class="flex justify-between mb-1">
+          <label class="font-medium dark:text-gray-100">Advance Notice Days</label>
+          <span class="dark:text-gray-100">{{ settings.advanceNoticeDays }} days</span>
+        </div>
+        <input
+          type="range"
+          min="1" max="30" step="1"
+          [(ngModel)]="settings.advanceNoticeDays"
+          class="w-full"
+        />
+        <p class="text-sm text-gray-500 dark:text-gray-400">
+          The number of days in advance that meeting notices must be sent.
+        </p>
+      </div>
+
+      <!-- Session Policies -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium dark:text-gray-100">Session Policies</h3>
+        <div *ngFor="let key of sessionKeys" class="flex justify-between items-center">
+          <div class="space-y-1">
+            <span class="dark:text-gray-100">
+              {{
+                key==='autoSendReminders' ? 'Automatic Reminders'
+                : key==='requireAttendanceConfirmation' ? 'Attendance Confirmation'
+                : key==='allowVirtualAttendance' ? 'Virtual Attendance'
+                : key==='recordSessions' ? 'Record Sessions'
+                : 'Auto-generate Minutes'
+              }}
+            </span>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{
+                key==='autoSendReminders' ? 'Send automatic reminders before sessions'
+                : key==='requireAttendanceConfirmation' ? 'Require members to confirm attendance'
+                : key==='allowVirtualAttendance' ? 'Allow members to attend sessions virtually'
+                : key==='recordSessions' ? 'Automatically record virtual sessions'
+                : 'Automatically generate minutes after sessions'
+              }}
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="settings.sessionSettings[key]"
+            class="toggle toggle-primary"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div *ngIf="currentTab==='notifications'" class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-6">
+
+      <!-- Email Notifications -->
+      <div class="space-y-4">
+        <h3 class="text-lg font-medium dark:text-gray-100">Email Notifications</h3>
+        <div *ngFor="let key of notificationKeys" class="flex justify-between items-center">
+          <div class="space-y-1">
+            <span class="dark:text-gray-100">
+              {{
+                key==='sessionCreated' ? 'Session Created'
+                : key==='sessionReminder' ? 'Session Reminder'
+                : key==='minutesAvailable' ? 'Minutes Available'
+                : 'Task Assigned'
+              }}
+            </span>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+              {{
+                key==='sessionCreated' ? 'Notify members when a new session is created'
+                : key==='sessionReminder' ? 'Send reminders before sessions'
+                : key==='minutesAvailable' ? 'Notify when meeting minutes are available'
+                : 'Notify members when they are assigned a task'
+              }}
+            </p>
+          </div>
+          <input
+            type="checkbox"
+            [(ngModel)]="settings.notifications[key]"
+            class="toggle toggle-primary"
+          />
+        </div>
+      </div>
+
+      <!-- Reminder Schedule -->
+      <div>
+        <h3 class="text-lg font-medium dark:text-gray-100 mb-2">Reminder Schedule</h3>
+        <div class="flex gap-4">
+          <div>
+            <label class="dark:text-gray-100">First reminder </label>
+            <select
+              [(ngModel)]="settings.notifications.firstReminderDays"
+              class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            >
+              <option *ngFor="let d of [1,2,3,5,7]" [value]="d">{{ d }} days before</option>
+            </select>
+          </div>
+          <div>
+            <label class="dark:text-gray-100">Second reminder </label>
+            <select
+              [(ngModel)]="settings.notifications.secondReminderDays"
+              class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            >
+              <option [value]="0">Same day</option>
+              <option [value]="1">1 day before</option>
+              <option [value]="2">2 days before</option>
+              <option [value]="3">3 days before</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Templates -->
+    <div *ngIf="currentTab==='templates'" class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-6">
+      <div>
+        <h3 class="text-lg font-medium dark:text-gray-100 mb-1">Meeting Notice Template</h3>
+        <textarea
+          rows="6"
+          [(ngModel)]="settings.templates.meetingNotice"
+          class="w-full border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+        ></textarea>
+      </div>
+      <div>
+        <h3 class="text-lg font-medium dark:text-gray-100 mb-1">Absence Justification Template</h3>
+        <textarea
+          rows="6"
+          [(ngModel)]="settings.templates.absenceJustification"
+          class="w-full border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+        ></textarea>
+      </div>
+      <div>
+        <h3 class="text-lg font-medium dark:text-gray-100 mb-1">Meeting Minutes Template</h3>
+        <textarea
+          rows="8"
+          [(ngModel)]="settings.templates.minutesTemplate"
+          class="w-full border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+        ></textarea>
+      </div>
+    </div>
+  </div>
+</ng-container>
+
+<ng-template #loadingTpl>
+  <div class="flex items-center justify-center h-64">
+    <lucide-icon name="Loader2" class="animate-spin h-8 w-8 text-gray-500"></lucide-icon>
+    <span class="ml-2 text-gray-700 dark:text-gray-300">Loading settings…</span>
+  </div>
+</ng-template>
+
+<!-- “Saved!” Confirmation Dialog -->
+<div
+  *ngIf="justSaved"
+  class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+>
+  <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-sm p-6 space-y-4">
+    <h3 class="text-lg font-semibold dark:text-gray-100">Settings Saved</h3>
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      Your changes have been saved successfully.
+    </p>
+    <div class="flex justify-end gap-2 pt-4">
+      <button
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        (click)="closeSavedDialog()"
+      >
+        OK
+      </button>
+    </div>
+  </div>
+</div>
