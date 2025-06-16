@@ -67,4 +67,6 @@ export class SessionService {
   endSession(sessionId: string, agenda: any[]): Observable<any> {
     return this.http.post(`${this.base}/${sessionId}/end`, { agenda });
   }
+
+  
 }

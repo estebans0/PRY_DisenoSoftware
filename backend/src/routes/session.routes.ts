@@ -40,7 +40,7 @@ router.put('/:id', SessionController.update);
 router.delete('/:id', SessionController.remove);
 router.post("/:id/start", SessionController.startSession); // Nueva ruta
 router.post("/:id/end", SessionController.endSession); // Nueva ruta
-router.post('/guests', SessionController.addGuest);
-router.delete('/:guestId', SessionController.removeGuest);
+router.post('/:id/guests', SessionController.addGuest);
+router.delete('/:id/guests', SessionController.removeGuest); //id sesion 
 
 export default router;
