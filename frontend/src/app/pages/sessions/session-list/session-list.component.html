@@ -3,7 +3,7 @@
 <ul *ngIf="!loading">
   <li *ngFor="let s of sessions">
     <a [routerLink]="['/sessions', s._id]">
-      Session #{{ s.number }} • {{ s.date }} • {{ s.type }}
+      Session #{{ s?.number }} • {{ s?.date }} • {{ s?.type || 'N/A' }}
     </a>
   </li>
 </ul>

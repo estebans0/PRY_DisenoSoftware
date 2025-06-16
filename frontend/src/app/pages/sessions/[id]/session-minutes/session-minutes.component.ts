@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
-import { AgendaService } from '../../../../services/agenda.service';
 import { SessionService } from '../../../../services/session.service';
 import { environment } from '../../../../../environments/environment';
 import jsPDF from 'jspdf';
@@ -79,9 +78,7 @@ export class SessionMinutesComponent implements OnInit {
   
   // API state
   isLoadingSession = false;
-  isLoadingAgenda = false;
   sessionError: string | null = null;
-  agendaError: string | null = null;
   
   // File upload
   selectedFiles: File[] = [];
@@ -104,46 +101,83 @@ export class SessionMinutesComponent implements OnInit {
   includeNextMeeting = true;
   includeSignatures = true;
   paperSize = 'letter';
-  orientation = 'portrait';
+  orientation: 'portrait' | 'p' | 'landscape' | 'l' = 'portrait';
+
+  // Add this to your SessionMinutesComponent class properties
+  attendees: Attendee[] = [];
+
+  // Add these properties if they don't exist
+  loading: boolean = true;
+  error: string | null = null;
+
+  // Add these properties
+  preparedBy: string = '';
+  approvedBy: string = '';
+  approvalDate: string = '';
 
   constructor(
     private route: ActivatedRoute,
     private http: HttpClient,
-    private sessionService: SessionService,
-    private agendaService: AgendaService
+    private sessionService: SessionService
   ) {}
 
-  ngOnInit() {
-    this.sessionId = this.route.snapshot.paramMap.get('id')!;
-    
-    // Load real data from APIs
-    this.loadSession();
-    this.loadAgenda();
+  ngOnInit(): void {
+    // Add debugging to see if this is being called
+    console.log('SessionMinutesComponent initialized');
+
+    this.route.params.subscribe(params => {
+      const sessionId = params['id'];
+      console.log('Session ID from route:', sessionId);
+
+      if (sessionId) {
+        this.loadSessionData(sessionId);
+      } else {
+        console.error('No session ID provided in route');
+      }
+    });
   }
 
-  // Load session data from API
-  loadSession() {
-    this.isLoadingSession = true;
-    this.sessionError = null;
+  loadSessionData(sessionId: string): void {
+    this.loading = true;
+    this.error = null;
+    this.sessionId = sessionId;
     
-    this.sessionService.getSession(this.sessionId).subscribe({
-      next: (data: any) => {
-        // Transform the session data to our interface format
-        this.session = this.transformSessionData(data);
-        this.isLoadingSession = false;
+    console.log('Attempting to load session with ID:', sessionId);
+    console.log('API URL being called:', `${environment.apiUrl}/sessions/${sessionId}`);
+    
+    this.sessionService.getSession(sessionId).subscribe({
+      next: (data) => {
+        console.log('SUCCESS - Session data received:', data);
         
-        // After loading session, fetch attendees' details
-        if (data.SessionAttendees && data.SessionAttendees.length > 0) {
-          this.fetchAttendeeDetails(data.SessionAttendees);
+        // Transform session data
+        this.session = this.transformSessionData(data);
+        
+        // Extract and transform agenda data directly from the session
+        if (data.agenda && data.agenda.length > 0) {
+          this.transformAgendaData(data.agenda);
+        } else {
+          this.agenda = [];
         }
         
-        // Update minutes after data is loaded
+        // If session has attendees, process them
+        if (data.attendees && data.attendees.length > 0) {
+          this.processAttendees(data.attendees);
+        } else {
+          this.attendees = [];
+        }
+        
+        // Update generated minutes content
         this.updateMinutesContent();
+        
+        this.loading = false;
       },
-      error: (err: any) => {
-        console.error('Failed to load session:', err);
-        this.sessionError = 'Failed to load session data.';
-        this.isLoadingSession = false;
+      error: (err) => {
+        console.error('ERROR loading session:', err);
+        console.error('Error status:', err.status);
+        console.error('Error message:', err.message);
+        console.error('Error details:', err.error);
+        this.error = 'Failed to load session data. Please try again later.';
+        this.loading = false;
       }
     });
   }
@@ -162,101 +196,46 @@ export class SessionMinutesComponent implements OnInit {
       location: data.location || 'N/A',
       modality: data.modality || 'N/A',
       description: data.description || '',
-      attendees: [] // This will be populated by fetchAttendeeDetails
+      attendees: [] // This will be populated separately
     };
   }
   
-  // Fetch the details of all attendees
-  fetchAttendeeDetails(sessionAttendees: any[]) {
-    // If no attendees or API not ready, create placeholder attendees
-    if (!sessionAttendees || sessionAttendees.length === 0) {
-      if (this.session) {
-        this.session.attendees = [
-          { id: '1', name: 'John Doe', position: 'Chairperson', status: 'Present' },
-          { id: '2', name: 'Jane Smith', position: 'Vice Chair', status: 'Present' }
-        ];
-        this.updateAttendanceLists();
-      }
-      return;
-    }
+  // Process attendees directly from session data
+  processAttendees(attendeeData: any[]) {
+    // Simple processing - in a real app you might fetch more user details
+    this.attendees = attendeeData.map(att => ({
+      id: att._id || att.memberId,
+      name: att.memberId, // Ideally you would fetch the full name from user service
+      position: att.role || 'Member',
+      status: att.status === 'confirmed' ? 'Present' : 'Absent'
+    }));
     
-    // Continue with normal API call if available
-    const attendeePromises = sessionAttendees.map(attendee => {
-      return this.http.get(`${environment.apiUrl}/users/${attendee.Attendee}`).toPromise();
-    });
-    
-    Promise.all(attendeePromises)
-      .then((users: any[]) => {
-        if (this.session) {
-          this.session.attendees = users.map((user, index) => ({
-            id: user._id,
-            name: `${user.name || ''} ${user.apellidos || ''}`.trim(),
-            position: user.position || 'Member',
-            status: sessionAttendees[index].Asistio ? 'Present' : 'Absent'
-          }));
-          this.updateAttendanceLists();
-        }
-      })
-      .catch(err => {
-        console.error('Failed to load attendee details:', err);
-        // Fallback to placeholder attendees on error
-        if (this.session) {
-          this.session.attendees = [
-            { id: '1', name: 'John Doe', position: 'Chairperson', status: 'Present' },
-            { id: '2', name: 'Jane Smith', position: 'Vice Chair', status: 'Present' }
-          ];
-          this.updateAttendanceLists();
-        }
-      });
+    // Update attendee counters and lists
+    this.updateAttendanceLists();
   }
   
   // Helper method to update attendance lists
   updateAttendanceLists() {
     if (!this.session) return;
     
-    this.presentCount = this.session.attendees.filter(a => a.status === 'Present').length;
+    this.presentCount = this.attendees.filter(a => a.status === 'Present').length;
     
-    this.presentList = this.session.attendees
+    this.presentList = this.attendees
       .filter(a => a.status === 'Present')
       .map(a => `${a.name} (${a.position})`)
       .join('; ');
       
-    this.absentList = this.session.attendees
+    this.absentList = this.attendees
       .filter(a => a.status === 'Absent')
       .map(a => `${a.name} (${a.position})`)
       .join('; ');
       
-    this.updateMinutesContent();
-  }
-  
-  // Load agenda data from API
-  loadAgenda() {
-    this.isLoadingAgenda = true;
-    this.agendaError = null;
-    
-    this.agendaService.getAgenda(this.sessionId).subscribe({
-      next: (data: any) => {
-        // Transform agenda data to our interface format
-        this.transformAgendaData(data);
-        this.isLoadingAgenda = false;
-        this.updateMinutesContent();
-      },
-      error: (err) => {
-        console.error('Failed to load agenda:', err);
-        this.agendaError = 'Failed to load agenda data.';
-        this.isLoadingAgenda = false;
-      }
-    });
+    this.session.attendees = this.attendees;
   }
   
   // Transform backend agenda format to our interface
-  transformAgendaData(data: any) {
-    if (!data || !data.SessionAgenda) {
-      this.agenda = [];
-      return;
-    }
-    
-    this.agenda = data.SessionAgenda.map((item: any) => {
+  transformAgendaData(agendaData: any[]) {
+    this.agenda = agendaData.map((item: any) => {
       return {
         id: item.Orden,
         title: item.Titulo,
@@ -272,10 +251,14 @@ export class SessionMinutesComponent implements OnInit {
         },
         tasks: (item.Actions || []).map((action: any) => ({
           description: action.Descripcion || '',
-          assignee: action.Assignee || 'Unassigned',
+          assignee: action.Responsable || 'Unassigned',
           dueDate: action.DueDate || 'Not specified'
         })),
-        supportingDocuments: [] // Just initialize with empty array for now
+        supportingDocuments: (item.SupportingDocuments || []).map((doc: any) => ({
+          id: doc._id || '',
+          filename: doc.filename || 'Unnamed document',
+          url: doc.url || '#'
+        }))
       };
     });
     
@@ -293,109 +276,6 @@ export class SessionMinutesComponent implements OnInit {
     this.originalContent = this.generateMarkdown();
     this.minutesContent = this.originalContent;
   }
-
-
-  
-  // Add a new agenda item
-  addAgendaItem(item: any) {
-    const newItem = {
-      Titulo: item.title,
-      Duration: item.actualDuration || 0,
-      Presenter: item.presenter,
-      Notas: item.notes || '',
-      EstimatedTime: item.duration || 0,
-      Pro: item.voting?.inFavor || 0,
-      Against: item.voting?.against || 0,
-      Actions: (item.tasks || []).map((task: Task) => ({
-        TipoAccion: 'Task',
-        Descripcion: task.description,
-        Assignee: task.assignee,
-        DueDate: task.dueDate
-      }))
-    };
-    
-    this.agendaService.addAgendaItem(this.sessionId, newItem).subscribe({
-      next: (result) => {
-        this.transformAgendaData(result);
-        this.updateMinutesContent();
-        
-        // Handle file uploads if any
-        if (this.selectedFiles.length > 0 && result.SessionAgenda) {
-          const lastItemOrder = result.SessionAgenda[result.SessionAgenda.length - 1].Orden;
-          //this.uploadSupportingDocuments(lastItemOrder);
-        }
-      },
-      error: (err) => {
-        console.error('Failed to add agenda item:', err);
-        this.agendaError = 'Failed to add agenda item.';
-      }
-    });
-  }
-  
-  // Update an existing agenda item
-  updateAgendaItem(id: number, updates: any) {
-    const itemUpdates = {
-      Titulo: updates.title,
-      Duration: updates.actualDuration || 0,
-      Presenter: updates.presenter,
-      Notas: updates.notes || '',
-      EstimatedTime: updates.duration || 0,
-      Pro: updates.voting?.inFavor || 0,
-      Against: updates.voting?.against || 0,
-      Actions: (updates.tasks || []).map((task: Task) => ({
-        TipoAccion: 'Task',
-        Descripcion: task.description,
-        Assignee: task.assignee,
-        DueDate: task.dueDate
-      }))
-    };
-    
-    this.agendaService.updateAgendaItem(this.sessionId, id, itemUpdates).subscribe({
-      next: (result) => {
-        this.transformAgendaData(result);
-        this.updateMinutesContent();
-      },
-      error: (err) => {
-        console.error('Failed to update agenda item:', err);
-        this.agendaError = 'Failed to update agenda item.';
-      }
-    });
-  }
-  
-  // Delete an agenda item
-  deleteAgendaItem(id: number) {
-    if (confirm('Are you sure you want to delete this agenda item?')) {
-      this.agendaService.deleteAgendaItem(this.sessionId, id).subscribe({
-        next: (result) => {
-          this.transformAgendaData(result);
-          this.updateMinutesContent();
-        },
-        error: (err) => {
-          console.error('Failed to delete agenda item:', err);
-          this.agendaError = 'Failed to delete agenda item.';
-        }
-      });
-    }
-  }
-  
-  // File handling methods
-  
-  // Comment out these methods for now
-
-// // Handle file selection
-// onFileSelected(event: Event, itemId: number) {
-//   // Implementation hidden for now
-// }
-
-// // Upload supporting documents for an agenda item
-// uploadSupportingDocuments(itemId: number) {
-//   // Implementation hidden for now
-// }
-
-// // Delete a supporting document
-// deleteDocument(agendaItemId: number, docId: string) {
-//   // Implementation hidden for now
-// }
   
   // UI control methods
   setActiveTab(tab: 'preview'|'edit'|'settings') {
@@ -415,7 +295,7 @@ export class SessionMinutesComponent implements OnInit {
       return;
     }
 
-    // Show loading indicator or message
+    // Show loading indicator
     const loadingMessage = document.createElement('div');
     loadingMessage.textContent = 'Preparing PDF...';
     loadingMessage.style.position = 'fixed';
@@ -429,19 +309,18 @@ export class SessionMinutesComponent implements OnInit {
     loadingMessage.style.zIndex = '9999';
     document.body.appendChild(loadingMessage);
 
-    // Set a timeout to allow the loading message to render
     setTimeout(() => {
       // Configure html2canvas
       html2canvas(printableElement as HTMLElement, {
-        scale: 2, // Higher scale for better quality
+        scale: 2, 
         useCORS: true,
         allowTaint: true,
         scrollX: 0,
-        scrollY: -window.scrollY // Handle scrolling
+        scrollY: -window.scrollY 
       }).then(canvas => {
-        // Create PDF with proper orientation and size
+        // Create PDF
         const pdf = new jsPDF({
-          orientation: this.orientation,
+          orientation: this.orientation as ('portrait' | 'p' | 'landscape' | 'l'),
           unit: 'mm',
           format: this.paperSize
         });
@@ -450,7 +329,7 @@ export class SessionMinutesComponent implements OnInit {
         const imgWidth = pdf.internal.pageSize.getWidth();
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
         
-        // Calculate number of pages needed
+        // Calculate number of pages
         const pageHeight = pdf.internal.pageSize.getHeight();
         let heightLeft = imgHeight;
         let position = 0;
@@ -472,11 +351,11 @@ export class SessionMinutesComponent implements OnInit {
         // Generate filename
         const fileName = `Minutes-${this.session?.number || 'Session'}-${new Date().toISOString().slice(0,10)}.pdf`;
         
-        // Save the PDF
-        pdf.save(fileName);
-        
-        // Remove loading message
+        // Remove loading indicator
         document.body.removeChild(loadingMessage);
+        
+        // Save PDF directly
+        pdf.save(fileName);
       });
     }, 100);
   }
@@ -486,8 +365,23 @@ export class SessionMinutesComponent implements OnInit {
   }
   
   saveChanges() { 
-    console.log('Saved:', this.minutesContent); 
-    // Implement saving logic
+    console.log('Saving changes to minutes content');
+    
+    // Create a document object
+    const minutesDocument = {
+      sessionId: this.sessionId,
+      content: this.minutesContent,
+      version: new Date().toISOString(),
+      preparedBy: this.preparedBy,
+      approvedBy: this.approvedBy,
+      approvalDate: this.approvalDate
+    };
+    
+    // Save to local storage for now
+    localStorage.setItem(`minutes-${this.sessionId}`, JSON.stringify(minutesDocument));
+    
+    // Show success message
+    alert('Minutes content saved successfully!');
   }
   
   applySettings() {
@@ -525,40 +419,35 @@ export class SessionMinutesComponent implements OnInit {
         md += `**Duration:** ${item.actualDuration} minutes\n\n`;
         
         if (item.notes) {
-          md += `**Notes:** ${item.notes}\n\n`;
+          md += `${item.notes}\n\n`;
         }
         
-        if (item.voting.inFavor > 0 || item.voting.against > 0) {
-          md += `**Voting Results:** ${item.voting.inFavor} in favor, ${item.voting.against} against. ${item.voting.result}.\n\n`;
-        }
+        // Add voting information
+        md += `**Voting:** ${item.voting.inFavor} in favor, ${item.voting.against} against - ${item.voting.result}\n\n`;
         
+        // Add tasks if any
         if (item.tasks && item.tasks.length > 0) {
-          md += `**Action Items:**\n\n`;
+          md += `**Tasks:**\n`;
           item.tasks.forEach(task => {
             md += `- ${task.description} (Assigned to: ${task.assignee}, Due: ${task.dueDate})\n`;
           });
-          md += '\n';
-        }
-        
-        if (item.supportingDocuments && item.supportingDocuments.length > 0) {
-          md += `**Supporting Documents:**\n\n`;
-          item.supportingDocuments.forEach(doc => {
-            md += `- [${doc.filename}](${doc.url})\n`;
-          });
-          md += '\n';
+          md += `\n`;
         }
       });
     }
     
+    // Add next meeting section
     if (this.includeNextMeeting) {
       md += `## Next Meeting\n\n`;
-      md += `To be determined\n\n`;
+      md += `The next meeting is scheduled for May 31, 2025 at 10:00 AM.\n\n`;
     }
     
+    // Add signatures section
     if (this.includeSignatures) {
       md += `## Signatures\n\n`;
-      md += `Chairperson: _______________________\n\n`;
-      md += `Secretary: _______________________\n\n`;
+      md += `Minutes Prepared By: _______________________\n\n`;
+      md += `Approved By: _______________________\n\n`;
+      md += `Date: _______________________\n`;
     }
     
     return md;
