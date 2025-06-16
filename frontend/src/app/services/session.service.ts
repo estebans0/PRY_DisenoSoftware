@@ -10,7 +10,8 @@ export interface Session {
   type: string;
   date:   string;
   time:   string;
-  // …etc
+  status: string; // 'scheduled', 'in progress', 'completed', 'cancelled'
+  quorum: string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -38,4 +39,11 @@ export class SessionService {
   delete(id: string): Observable<void> {
     return this.http.delete<void>(`${this.base}/${id}`);
   }
+  startSession(sessionId: string): Observable<any> {
+    return this.http.post(`${this.base}/${sessionId}/start`, {});
+  }
+
+  endSession(sessionId: string, agenda: any[]): Observable<any> {
+    return this.http.post(`${this.base}/${sessionId}/end`, { agenda });
+}
 }

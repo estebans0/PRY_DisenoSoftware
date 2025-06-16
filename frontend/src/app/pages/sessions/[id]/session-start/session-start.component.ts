@@ -11,6 +11,7 @@ import {
   Router
 } from '@angular/router';
 import { LucideAngularModule }           from 'lucide-angular';
+import { SessionService }                from '../../../../services/session.service';
 
 interface Attendee {
   id: number;
@@ -145,7 +146,8 @@ export class SessionStartComponent implements OnInit, OnDestroy {
 
   constructor(
     private route: ActivatedRoute,
-    private router: Router
+    private router: Router,
+    private sessionService: SessionService
   ) {}
 
   ngOnInit(): void {
@@ -179,14 +181,37 @@ export class SessionStartComponent implements OnInit, OnDestroy {
   // session controls
   startSession(): void {
     this.sessionStarted = true;
-    this.startTime      = new Date();
+    this.startTime = new Date();
+    
+    // Actualizar estado en la base de datos
+    this.sessionService.startSession(this.sessionId.toString()).subscribe({
+      next: (session: any) => {
+        console.log('Session started in database', session);
+      },
+      error: (err: any) => {
+        console.error('Error starting session', err);
+      }
+    });
   }
 
   endSession(): void {
     this.sessionEnded = true;
-    this.endTime      = new Date();
+    this.endTime = new Date();
     Object.values(this.itemTimers).forEach(t => t.running = false);
     this.activeItem = null;
+    
+    // Actualizar estado en la base de datos
+    this.sessionService.endSession(
+      this.sessionId.toString(),
+      this.agenda
+    ).subscribe({
+      next: (session: any) => {
+        console.log('Session ended in database', session);
+      },
+      error: (err: any) => {
+        console.error('Error ending session', err);
+      }
+    });
   }
 
   // agenda controls

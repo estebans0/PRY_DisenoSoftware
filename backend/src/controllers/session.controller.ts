@@ -76,10 +76,7 @@ export const remove: RequestHandler = async (req, res, next) => {
     success ? res.sendStatus(204) : res.sendStatus(404);
   } catch (err) {
     next(err);
-  }
-};
-
-// Matias Leer
+ // Matias Leer
 export const startSession: RequestHandler = async (req, res, next) => {
   try {
     const session = await SessionService.startSession(req.params.id);
@@ -135,4 +132,3 @@ export const removeGuest: RequestHandler = async (req, res, next) => {
     next(err);
   }
 };
-

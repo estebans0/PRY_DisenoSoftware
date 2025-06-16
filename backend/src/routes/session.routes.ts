@@ -15,3 +15,4 @@ router.post('/guests', sessionController.addGuest);
 router.delete('/:guestId', sessionController.removeGuest);
 
 export default router
+

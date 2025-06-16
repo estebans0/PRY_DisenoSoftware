@@ -28,6 +28,7 @@ export const endSession = async (id: string, agendaItems: any[]) => {
     endTime: new Date(),
     agenda: agendaItems
   }, { new: true });
+
 };
 
 /** Agregar un invitado a una sesión */
@@ -50,3 +51,6 @@ export const removeGuestFromSession = async (sessionId: string, guestId: number)
   await session.save();
   return session;
 };
+
+};
+
