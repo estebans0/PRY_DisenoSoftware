@@ -123,6 +123,7 @@ function sanitizeAgenda(rawAgenda: any[]): any[] {
     pro:           item.pro,
     against:       item.against,
     abstained:     item.abstained,
+    notes:         item.notes || '', 
     actions:       (item.actions || []).map((a: any) => ({
                      description: a.description,
                      assignee:    { name: a.assignee.name },

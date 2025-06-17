@@ -114,7 +114,7 @@ export class SessionStartComponent implements OnInit, OnDestroy {
             presenter: ai.presenter,
             duration:  ai.duration,
             documents: (ai.documents || []).map((d: any) => d.fileName),
-            notes:     '',
+            notes:     ai.notes || '',
             voting:    { inFavor: 0, against: 0, abstain: 0, result: '' },
             tasks:     (ai.actions || []).map((t: any) => ({
               description: t.description,
@@ -216,22 +216,7 @@ export class SessionStartComponent implements OnInit, OnDestroy {
   }
 
   private persistItem(itemId: number): void {
-    const payload = this.agenda.map(ai => ({
-      order:         ai.id,
-      title:         ai.title,
-      duration:      ai.duration,
-      presenter:     ai.presenter,
-      estimatedTime: ai.duration,
-      pro:           this.buildVoterList(ai.voting.inFavor),
-      against:       this.buildVoterList(ai.voting.against),
-      abstained:     this.buildVoterList(ai.voting.abstain),
-      actions:       ai.tasks.map(t => ({
-                        description: t.description,
-                        assignee:    { _id: '', name: t.assignee }
-                      })),
-      documents:     [] as any[]
-    }));
-
+    const payload = this.buildFullAgendaPayload();
     this.sessionService.updateAgenda(this.sessionId, payload).subscribe({
       next: () => console.log(`Saved item #${itemId}`),
       error: e => console.error('Failed to save item', e)
@@ -348,7 +333,9 @@ export class SessionStartComponent implements OnInit, OnDestroy {
                         description: t.description,
                         assignee:    { _id: '', name: t.assignee }
                       })),
-      documents:     [] as any[]
+      documents:     [] as any[],
+      decision:      ai.voting.result || null,
+      notes:         ai.notes
     }));
   }
 

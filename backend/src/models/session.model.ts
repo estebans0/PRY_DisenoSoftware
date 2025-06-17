@@ -32,6 +32,7 @@ const AgendaItemSchema = new Schema({
   title:         { type: String, required: true },
   duration:      { type: Number, required: true },
   presenter:     { type: String, required: true },
+  notes:         { type: String, default: '' },
   pro:           [AttendeeSchema],
   against:       [AttendeeSchema],
   abstained:     [AttendeeSchema],
