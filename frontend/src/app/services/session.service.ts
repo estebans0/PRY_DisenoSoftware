@@ -18,6 +18,15 @@ export interface Session {
   location: string;
   modality?: 'In Person' | 'Virtual' | 'Hybrid';
   description?: string;
+  createdBy?: { _id: string; name: string };
+  createdAt?: string;
+  documents?: {
+    fileName:   string;
+    fileType?:  string;
+    fileSize:   number;
+    filePath:   string;
+    uploadDate: string;
+  }[];
 }
 
 @Injectable({ providedIn: 'root' })
