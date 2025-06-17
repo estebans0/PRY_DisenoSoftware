@@ -31,6 +31,8 @@ export class SessionDetailComponent implements OnInit {
   declinedCount  = 0;
   totalDuration  = 0;
 
+  showQuorumError = false;
+
   constructor(
     private route:          ActivatedRoute,
     private router:         Router,
@@ -110,11 +112,21 @@ export class SessionDetailComponent implements OnInit {
     this.router.navigate(['/sessions', this.sessionId, 'edit']);
   }
 
-  goToStart(): void {
-    this.sessionService.startSession(this.sessionId).subscribe(
-      () => this.router.navigate(['/sessions']),
-      err => console.error('Unable to start session', err)
-    );
+  onStartSession(): void {
+    // only allow if quorum is Achieved
+    if (this.session.quorum !== 'Achieved') {
+      this.showQuorumError = true;
+      return;
+    }
+    
+    this.sessionService.startSession(this.sessionId).subscribe({
+      next: () => this.router.navigate(['/sessions', this.sessionId, 'start']),
+      error: err => console.error('Unable to start session', err)
+    });
+  }
+  
+  closeQuorumDialog(): void {
+    this.showQuorumError = false;
   }
 
   viewMinutes(): void {

@@ -1,3 +1,4 @@
+// backend/src/controllers/session.controller.ts
 import { Request, Response, NextFunction } from 'express';
 import { Types } from 'mongoose';
 import multer from 'multer';
@@ -65,7 +66,11 @@ export async function getOne(req: Request, res: Response, next: NextFunction): P
 // PUT /sessions/:id
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const updated = await Session.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updated = await Session.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true, context: 'query' }
+    );
     if (!updated) {
       res.sendStatus(404);
       return;
@@ -95,8 +100,8 @@ export async function startSession(req: Request, res: Response, next: NextFuncti
   try {
     const session = await Session.findByIdAndUpdate(
       req.params.id,
-      { status: 'in-progress', startTime: new Date() },
-      { new: true }
+      { status: 'In Progress', startTime: new Date() },
+      { new: true, runValidators: true, context: 'query' }
     );
     if (!session) {
       res.sendStatus(404);
@@ -108,14 +113,42 @@ export async function startSession(req: Request, res: Response, next: NextFuncti
   }
 }
 
-// POST /sessions/:id/end
-export async function endSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+function sanitizeAgenda(rawAgenda: any[]): any[] {
+  return rawAgenda.map(item => ({
+    order:         item.order,
+    title:         item.title,
+    duration:      item.duration,
+    presenter:     item.presenter,
+    estimatedTime: item.estimatedTime,
+    pro:           item.pro,
+    against:       item.against,
+    abstained:     item.abstained,
+    actions:       (item.actions || []).map((a: any) => ({
+                     description: a.description,
+                     assignee:    { name: a.assignee.name },
+                     dueDate:     a.dueDate
+                   })),
+    documents:     item.documents || [],
+    decision:      item.decision || null
+  }));
+}
+
+// — POST /sessions/:id/end —
+export async function endSession(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { agenda } = req.body;
+    const sanitized = sanitizeAgenda(req.body.agenda || []);
     const session = await Session.findByIdAndUpdate(
       req.params.id,
-      { status: 'completed', endTime: new Date(), agenda },
-      { new: true }
+      {
+        status:    'Completed',
+        endTime:   new Date(),
+        agenda:    sanitized
+      },
+      { new: true, runValidators: true, context: 'query' }
     );
     if (!session) {
       res.sendStatus(404);
@@ -130,7 +163,11 @@ export async function endSession(req: Request, res: Response, next: NextFunction
 // ——— Agenda Items by ID ———
 
 // POST /sessions/:id/agenda
-export async function addAgendaItems(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function addAgendaItems(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const { id } = req.params;
     if (!isValidObjectId(id)) {
@@ -150,20 +187,23 @@ export async function addAgendaItems(req: Request, res: Response, next: NextFunc
   }
 }
 
-// PUT /sessions/:id/agenda
-export async function updateAgenda(req: Request, res: Response, next: NextFunction): Promise<void> {
+// — PUT /sessions/:id/agenda —
+export async function updateAgenda(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { id } = req.params;
-    if (!isValidObjectId(id)) {
+    if (!isValidObjectId(req.params.id)) {
       res.status(400).json({ message: 'Invalid session ID' });
       return;
     }
-    const session: any = await Session.findById(id);
+    const session: any = await Session.findById(req.params.id);
     if (!session) {
-      res.status(404).json({ message: 'Session not found' });
+      res.sendStatus(404);
       return;
     }
-    session.agenda = req.body.agenda;
+    session.agenda = sanitizeAgenda(req.body.agenda || []);
     await session.save();
     res.json(session);
   } catch (err) {
@@ -172,7 +212,11 @@ export async function updateAgenda(req: Request, res: Response, next: NextFuncti
 }
 
 // DELETE /sessions/:sessionId/agenda/:itemId
-export async function removeAgendaItem(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function removeAgendaItem(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const { sessionId, itemId } = req.params;
     if (!isValidObjectId(sessionId) || !isValidObjectId(itemId)) {
@@ -195,7 +239,11 @@ export async function removeAgendaItem(req: Request, res: Response, next: NextFu
 // ——— Agenda Items by Number ———
 
 // GET /sessions/number/:number
-export async function getOneByNumber(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function getOneByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session = await Session.findOne({ number: req.params.number });
     if (!session) {
@@ -209,12 +257,16 @@ export async function getOneByNumber(req: Request, res: Response, next: NextFunc
 }
 
 // PUT /sessions/number/:number
-export async function updateByNumber(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function updateByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session = await Session.findOneAndUpdate(
       { number: req.params.number },
       req.body,
-      { new: true }
+      { new: true, runValidators: true, context: 'query' }
     );
     if (!session) {
       res.status(404).json({ message: 'Session not found' });
@@ -227,7 +279,11 @@ export async function updateByNumber(req: Request, res: Response, next: NextFunc
 }
 
 // DELETE /sessions/number/:number
-export async function removeByNumber(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function removeByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const sessionNumber = req.params.number;
     const session      = await Session.findOne({ number: sessionNumber });
@@ -243,7 +299,11 @@ export async function removeByNumber(req: Request, res: Response, next: NextFunc
 }
 
 // POST /sessions/number/:number/agenda
-export async function addAgendaItemsByNumber(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function addAgendaItemsByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session: any = await Session.findOne({ number: req.params.number });
     if (!session) {
@@ -259,7 +319,11 @@ export async function addAgendaItemsByNumber(req: Request, res: Response, next: 
 }
 
 // PUT /sessions/number/:number/agenda
-export async function updateAgendaByNumber(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function updateAgendaByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session: any = await Session.findOne({ number: req.params.number });
     if (!session) {
@@ -275,7 +339,11 @@ export async function updateAgendaByNumber(req: Request, res: Response, next: Ne
 }
 
 // DELETE /sessions/number/:number/agenda/:itemId
-export async function removeAgendaItemByNumber(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function removeAgendaItemByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session: any = await Session.findOne({ number: req.params.number });
     if (!session) {
@@ -293,7 +361,11 @@ export async function removeAgendaItemByNumber(req: Request, res: Response, next
 // ——— Guests ———
 
 // POST /sessions/:sessionId/guests
-export async function addGuest(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function addGuest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session: any = await Session.findById(req.params.sessionId);
     if (!session) {
@@ -315,7 +387,11 @@ export async function addGuest(req: Request, res: Response, next: NextFunction):
 }
 
 // DELETE /sessions/:sessionId/guests/:guestId
-export async function removeGuest(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function removeGuest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
     const session: any = await Session.findById(req.params.sessionId);
     if (!session) {

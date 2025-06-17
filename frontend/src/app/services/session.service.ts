@@ -27,6 +27,8 @@ export interface Session {
     filePath:   string;
     uploadDate: string;
   }[];
+  startTime?: string;
+  endTime?:   string;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -56,8 +58,8 @@ export class SessionService {
   startSession(sessionId: string): Observable<Session> {
     return this.http.post<Session>(`${this.base}/${sessionId}/start`, {});
   }
-  endSession(sessionId: string, agenda: any[]): Observable<Session> {
-    return this.http.post<Session>(`${this.base}/${sessionId}/end`, { agenda });
+  endSession(sessionId: string): Observable<Session> {
+    return this.http.post<Session>(`${this.base}/${sessionId}/end`, {});
   }
 
   // — Guests
@@ -89,9 +91,17 @@ export class SessionService {
   }
 
   uploadDocuments(sessionId: string, agendaOrden: number, form: FormData) {
-  return this.http.post<any[]>(
-    `${this.base}/${sessionId}/agenda/${agendaOrden}/documents`,
-    form
-  );
-}
+    return this.http.post<any[]>(
+      `${this.base}/${sessionId}/agenda/${agendaOrden}/documents`,
+      form
+    );
+  }
+
+  /** Update the agenda array on the session. */
+  updateAgenda(sessionId: string, agenda: any[]): Observable<Session> {
+    return this.http.put<Session>(
+      `${this.base}/${sessionId}/agenda`,
+      { agenda }
+    );
+  }
 }

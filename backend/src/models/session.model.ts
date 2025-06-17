@@ -4,16 +4,16 @@ import { Schema, model, Document, Types } from 'mongoose';
 // --- Supporting sub‐schemas ---
 
 const AttendeeSchema = new Schema({
-  name:      { type: String, required: true },
-  email:     { type: String, required: true },
-  status:    { type: String, enum: ['Confirmed','Pending','Declined'], default: 'Pending' },
-  role:      { type: String, default: 'Guest' },
+  name:   { type: String, required: true },
+  email:  { type: String, default: '' },
+  status: { type: String, enum: ['Confirmed','Pending','Declined'], default: 'Pending' },
+  role:   { type: String, default: 'Guest' },
 }, { _id: true });
 
 const ActionSchema = new Schema({
   description: { type: String, required: true },
   assignee:    {
-    _id:   { type: Schema.Types.ObjectId, required: true, ref: 'User' },
+    _id:   { type: Schema.Types.ObjectId, ref: 'User' },
     name:  { type: String, required: true }
   },
   dueDate:     { type: Date }
@@ -37,7 +37,15 @@ const AgendaItemSchema = new Schema({
   abstained:     [AttendeeSchema],
   actions:       [ActionSchema],
   estimatedTime: { type: Number, required: true },
-  documents:     [DocumentSchema]
+  documents:     [DocumentSchema],
+
+  // ─── NEW ─── store the final voting result
+  decision: {
+    type: String,
+    enum: ['Approved','Rejected','Deferred'],
+    default: null
+  }
+
 }, { _id: true });
 
 const GuestSchema = new Schema({
@@ -55,8 +63,10 @@ export interface ISession extends Document {
   time:         string;
   location:     string;
   modality:     'In Person' | 'Virtual' | 'Hybrid';
-  status:       'Scheduled' | 'Completed' | 'Cancelled';
+  status:       'Scheduled' | 'In Progress' | 'Completed' | 'Cancelled';
   quorum:       'Pending' | 'Achieved' | 'Not Achieved';
+  startTime?:   Date;
+  endTime?:     Date;
   createdBy:    { _id: Types.ObjectId; name: string };
   attendees:    typeof AttendeeSchema[];
   description?: string;
@@ -74,14 +84,46 @@ const SessionSchema = new Schema<ISession>({
 
   // ─── NEW ───
   modality: {
-    type:    String,
-    required:true,
-    enum:    ['In Person','Virtual','Hybrid'],
-    default: 'In Person'
+    type:     String,
+    required: true,
+    enum:     ['In Person','Virtual','Hybrid'],
+    default:  'In Person'
   },
 
-  status:     { type: String, enum: ['Scheduled','Completed','Cancelled'], default: 'Scheduled' },
+  // ─── EXTENDED ───
+  status: {
+    type: String,
+    enum: ['Scheduled','In Progress','Completed','Cancelled'],
+    default: 'Scheduled',
+    // whenever someone sets .status, coerce common lowercase/varied inputs
+    set: (v: string) => {
+      if (!v) return v;
+      const lower = v.toString().toLowerCase().trim();
+      switch (lower) {
+        case 'scheduled':
+          return 'Scheduled';
+        case 'in progress':
+        case 'in-progress':
+        case 'inprogress':
+          return 'In Progress';
+        case 'completed':
+          return 'Completed';
+        case 'cancelled':
+        case 'canceled':
+          return 'Cancelled';
+        default:
+          // let it through—if it’s not one of the enum values, validation will still catch it
+          return v;
+      }
+    }
+  },
+
   quorum:     { type: String, enum: ['Pending','Achieved','Not Achieved'], default: 'Pending' },
+
+  // ─── ADDED ───
+  startTime:  { type: Date },
+  endTime:    { type: Date },
+
   createdBy:  {
     _id:  { type: Schema.Types.ObjectId, required: true, ref: 'User' },
     name: { type: String, required: true }

@@ -1,3 +1,5 @@
+// src/app/pages/sessions/[id]/session-start/session-start.component.ts
+
 import {
   Component,
   OnInit,
@@ -49,98 +51,34 @@ interface AgendaItem {
   styleUrls: ['./session-start.component.scss']
 })
 export class SessionStartComponent implements OnInit, OnDestroy {
-  sessionId!: number;
+  sessionId!: string;
+  session!: any;
+  attendees: Attendee[] = [];
+  agenda: AgendaItem[]  = [];
 
-  // Session state
   sessionStarted = false;
   sessionEnded   = false;
   currentTime    = new Date();
   startTime: Date | null = null;
   endTime:   Date | null = null;
 
-  // Timers & UI helpers
   activeItem: number | null = null;
   itemTimers: Record<number, { elapsed: number; running: boolean }> = {};
   openItems:  Record<number, boolean> = {};
 
-  // task form inputs per-item
   newTaskDesc:     Record<number,string> = {};
   newTaskAssignee: Record<number,string> = {};
 
-  // Mock session metadata
-  session = {
-    number:   '001',
-    type:     'Ordinary',
-    date:     '2025-05-15',
-    time:     '10:00 AM',
-    location: 'Board Room A, Main Building'
-  };
-
-  // Mock attendees
-  attendees: Attendee[] = [
-    { id:1, name:'John Doe',       position:'Chairperson',      status:'Present' },
-    { id:2, name:'Jane Smith',     position:'Vice Chairperson', status:'Present' },
-    { id:3, name:'Robert Johnson', position:'Secretary',        status:'Present' },
-    { id:4, name:'Emily Davis',    position:'Treasurer',        status:'Present' },
-    { id:5, name:'Michael Wilson', position:'Board Member',     status:'Absent'  },
-    { id:6, name:'Sarah Thompson', position:'Board Member',     status:'Present' },
-    { id:7, name:'David Martinez', position:'Board Member',     status:'Present' },
-    { id:8, name:'Jennifer Garcia',position:'Board Member',     status:'Absent'  },
-  ];
-
-  // Mock agenda
-  agenda: AgendaItem[] = [
-    {
-      id:1,
-      title: 'Approval of Previous Minutes',
-      presenter:'John Doe',
-      duration:10,
-      documents:['previous_minutes.pdf'],
-      notes:'',
-      voting:{ inFavor:0, against:0, abstain:0, result:'' },
-      tasks:[]
-    },
-    {
-      id:2,
-      title:'Financial Report Q1 2025',
-      presenter:'Emily Davis',
-      duration:20,
-      documents:['financial_report_q1_2025.pdf','budget_comparison.xlsx'],
-      notes:'',
-      voting:{ inFavor:0, against:0, abstain:0, result:'' },
-      tasks:[]
-    },
-    {
-      id:3,
-      title:'Strategic Plan Update',
-      presenter:'Jane Smith',
-      duration:30,
-      documents:['strategic_plan_update.pptx'],
-      notes:'',
-      voting:{ inFavor:0, against:0, abstain:0, result:'' },
-      tasks:[]
-    },
-    {
-      id:4,
-      title:'New Project Proposals',
-      presenter:'David Martinez',
-      duration:20,
-      documents:['project_proposals.pdf'],
-      notes:'',
-      voting:{ inFavor:0, against:0, abstain:0, result:'' },
-      tasks:[]
-    },
-    {
-      id:5,
-      title:'Any Other Business',
-      presenter:'John Doe',
-      duration:10,
-      documents:[],
-      notes:'',
-      voting:{ inFavor:0, against:0, abstain:0, result:'' },
-      tasks:[]
-    },
-  ];
+  /**
+   * For each agenda item, track which attendee IDs are checked
+   * in each voting category, plus the computed result.
+   */
+  voteSelections: Record<number, {
+    inFavor: number[];
+    against: number[];
+    abstain: number[];
+    result?: string;
+  }> = {};
 
   private intervalId!: number;
 
@@ -151,24 +89,57 @@ export class SessionStartComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
-    // grab sessionId
-    this.sessionId = +this.route.snapshot.paramMap.get('id')!;
+    this.sessionId = this.route.snapshot.paramMap.get('id')!;
 
-    // init timers + open flags + new-task inputs
-    for (const item of this.agenda) {
-      this.itemTimers[item.id] = { elapsed: 0, running: false };
-      this.openItems[item.id]  = false;
-      this.newTaskDesc[item.id]     = '';
-      this.newTaskAssignee[item.id] = '';
-    }
+    this.sessionService.getSession(this.sessionId).subscribe({
+      next: sess => {
+        this.session        = sess;
+        this.sessionStarted = sess.status === 'In Progress' || sess.status === 'Completed';
+        this.sessionEnded   = sess.status === 'Completed';
 
-    // tick clock every second
+        if (sess.startTime) this.startTime = new Date(sess.startTime);
+        if (sess.endTime)   this.endTime   = new Date(sess.endTime);
+
+        this.attendees = (sess.attendees || []).map((a: any, idx: number) => ({
+          id:       idx + 1,
+          name:     a.name,
+          position: a.role,
+          status:   a.status === 'Confirmed' ? 'Present' : 'Absent'
+        }));
+
+        this.agenda = (sess.agenda || []).map((ai: any) => {
+          const item: AgendaItem = {
+            id:        ai.order,
+            title:     ai.title,
+            presenter: ai.presenter,
+            duration:  ai.duration,
+            documents: (ai.documents || []).map((d: any) => d.fileName),
+            notes:     '',
+            voting:    { inFavor: 0, against: 0, abstain: 0, result: '' },
+            tasks:     (ai.actions || []).map((t: any) => ({
+              description: t.description,
+              assignee:    t.assignee.name
+            }))
+          };
+          this.voteSelections[item.id] = {
+            inFavor: [], against: [], abstain: [], result: ''
+          };
+          return item;
+        });
+
+        for (const it of this.agenda) {
+          this.itemTimers[it.id] = { elapsed: 0, running: false };
+          this.openItems[it.id]  = false;
+          this.newTaskDesc[it.id]     = '';
+          this.newTaskAssignee[it.id] = '';
+        }
+      },
+      error: err => console.error('Failed to load session for start', err)
+    });
+
     this.intervalId = window.setInterval(() => {
       this.currentTime = new Date();
-      if (
-        this.activeItem !== null &&
-        this.itemTimers[this.activeItem].running
-      ) {
+      if (this.activeItem !== null && this.itemTimers[this.activeItem].running) {
         this.itemTimers[this.activeItem].elapsed++;
       }
     }, 1000);
@@ -178,43 +149,39 @@ export class SessionStartComponent implements OnInit, OnDestroy {
     clearInterval(this.intervalId);
   }
 
-  // session controls
+  // — Session lifecycle —
+
   startSession(): void {
-    this.sessionStarted = true;
-    this.startTime = new Date();
-    
-    // Actualizar estado en la base de datos
-    this.sessionService.startSession(this.sessionId.toString()).subscribe({
-      next: (session: any) => {
-        console.log('Session started in database', session);
+    if (!this.quorumAchieved) {
+      alert(`Cannot start session if quorum isn't achieved`);
+      return;
+    }
+
+    this.sessionService.startSession(this.sessionId).subscribe({
+      next: sess => {
+        this.sessionStarted = true;
+        this.session.status  = 'In Progress';
+        if (sess.startTime) this.startTime = new Date(sess.startTime);
       },
-      error: (err: any) => {
-        console.error('Error starting session', err);
-      }
+      error: err => console.error('Error starting session', err)
     });
   }
 
   endSession(): void {
-    this.sessionEnded = true;
-    this.endTime = new Date();
-    Object.values(this.itemTimers).forEach(t => t.running = false);
-    this.activeItem = null;
-    
-    // Actualizar estado en la base de datos
-    this.sessionService.endSession(
-      this.sessionId.toString(),
-      this.agenda
-    ).subscribe({
-      next: (session: any) => {
-        console.log('Session ended in database', session);
+    this.sessionService.endSession(this.sessionId).subscribe({
+      next: sess => {
+        this.sessionEnded  = true;
+        this.session.status = 'Completed';
+        if (sess.endTime) this.endTime = new Date(sess.endTime);
+        Object.values(this.itemTimers).forEach(t => t.running = false);
+        this.activeItem = null;
       },
-      error: (err: any) => {
-        console.error('Error ending session', err);
-      }
+      error: err => console.error('Error ending session', err)
     });
   }
 
-  // agenda controls
+  // — Agenda controls —
+
   startAgendaItem(itemId: number): void {
     if (this.activeItem !== null && this.activeItem !== itemId) {
       this.itemTimers[this.activeItem].running = false;
@@ -232,23 +199,112 @@ export class SessionStartComponent implements OnInit, OnDestroy {
     this.openItems[itemId] = !this.openItems[itemId];
   }
 
+  saveNotes(itemId: number): void {
+    this.persistItem(itemId);
+  }
+
   addTask(itemId: number): void {
-    const item = this.agenda.find(i => i.id === itemId);
-    if (!item) return;
-    item.tasks.push({
+    const it = this.agenda.find(a => a.id === itemId);
+    if (!it) return;
+    it.tasks.push({
       description: this.newTaskDesc[itemId],
       assignee:    this.newTaskAssignee[itemId]
     });
     this.newTaskDesc[itemId]     = '';
     this.newTaskAssignee[itemId] = '';
+    this.persistItem(itemId);
   }
 
-  // computed getters
-  get activeAgendaItem(): AgendaItem | undefined {
-    return this.activeItem == null
-      ? undefined
-      : this.agenda.find(i => i.id === this.activeItem);
+  private persistItem(itemId: number): void {
+    const payload = this.agenda.map(ai => ({
+      order:         ai.id,
+      title:         ai.title,
+      duration:      ai.duration,
+      presenter:     ai.presenter,
+      estimatedTime: ai.duration,
+      pro:           this.buildVoterList(ai.voting.inFavor),
+      against:       this.buildVoterList(ai.voting.against),
+      abstained:     this.buildVoterList(ai.voting.abstain),
+      actions:       ai.tasks.map(t => ({
+                        description: t.description,
+                        assignee:    { _id: '', name: t.assignee }
+                      })),
+      documents:     [] as any[]
+    }));
+
+    this.sessionService.updateAgenda(this.sessionId, payload).subscribe({
+      next: () => console.log(`Saved item #${itemId}`),
+      error: e => console.error('Failed to save item', e)
+    });
   }
+
+  private buildVoterList(count: number) {
+    return this.attendees
+      .filter(a => a.status === 'Present')
+      .slice(0, count)
+      .map(a => ({
+        name:   a.name,
+        email:  '',
+        status: 'Confirmed',
+        role:   a.position
+      }));
+  }
+
+  // — Voting UI logic —
+
+  toggleVote(
+    itemId:      number,
+    category:    'inFavor' | 'against' | 'abstain',
+    attendeeId:  number,
+    checked:     boolean
+  ): void {
+    const sel = this.voteSelections[itemId][category];
+    if (checked) {
+      if (!sel.includes(attendeeId)) sel.push(attendeeId);
+    } else {
+      const idx = sel.indexOf(attendeeId);
+      if (idx >= 0) sel.splice(idx, 1);
+    }
+  }
+
+  registerVotes(itemId: number): void {
+    const vs = this.voteSelections[itemId];
+    const it = this.agenda.find(a => a.id === itemId)!;
+
+    const fav   = vs.inFavor.length;
+    const ag    = vs.against.length;
+    const abst  = vs.abstain.length;
+
+    it.voting.inFavor  = fav;
+    it.voting.against  = ag;
+    it.voting.abstain  = abst;
+
+    // 1) If In Favor and Against are tied ⇒ Deferred  
+    // 2) Else if Abstain strictly > both others ⇒ Deferred  
+    // 3) Else if In Favor strictly > both others ⇒ Approved  
+    // 4) Else if Against strictly > both others ⇒ Rejected  
+    // 5) Otherwise (any leftover edge) ⇒ Deferred
+    if (fav === ag) {
+      vs.result = 'Deferred';
+    }
+    else if (abst > fav && abst > ag) {
+      vs.result = 'Deferred';
+    }
+    else if (fav > ag && fav > abst) {
+      vs.result = 'Approved';
+    }
+    else if (ag > fav && ag > abst) {
+      vs.result = 'Rejected';
+    }
+    else {
+      vs.result = 'Deferred';
+    }
+
+    it.voting.result = vs.result!;
+    this.persistItem(itemId);
+  }
+
+  // — Computed helpers —
 
   get presentCount(): number {
     return this.attendees.filter(a => a.status === 'Present').length;
@@ -258,30 +314,64 @@ export class SessionStartComponent implements OnInit, OnDestroy {
     return this.presentCount >= Math.ceil(this.attendees.length / 2);
   }
 
-  // pulled Math.floor logic out of template
   getSessionElapsed(): string {
     if (!this.startTime) return '0:00';
-    const secs = Math.floor(
-      (new Date().getTime() - this.startTime.getTime()) / 1000
-    );
+    const secs = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
     return this.formatTime(secs);
   }
 
   getTotalDuration(): string {
     if (!this.startTime || !this.endTime) return '0:00';
-    const secs = Math.floor(
-      (this.endTime.getTime() - this.startTime.getTime()) / 1000
-    );
+    const secs = Math.floor((this.endTime.getTime() - this.startTime.getTime()) / 1000);
     return this.formatTime(secs);
   }
 
-  formatTime(totalSeconds: number): string {
+  /** MUST be public for template binding */
+  public formatTime(totalSeconds: number): string {
     const m = Math.floor(totalSeconds / 60);
     const s = totalSeconds % 60;
-    return `${m}:${s.toString().padStart(2,'0')}`;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  }
+
+  /** Build the same “agenda payload” you use in persistItem() */
+  private buildFullAgendaPayload() {
+    return this.agenda.map(ai => ({
+      order:         ai.id,
+      title:         ai.title,
+      duration:      ai.duration,
+      presenter:     ai.presenter,
+      estimatedTime: ai.duration,
+      pro:           this.buildVoterList(ai.voting.inFavor),
+      against:       this.buildVoterList(ai.voting.against),
+      abstained:     this.buildVoterList(ai.voting.abstain),
+      actions:       ai.tasks.map(t => ({
+                        description: t.description,
+                        assignee:    { _id: '', name: t.assignee }
+                      })),
+      documents:     [] as any[]
+    }));
   }
 
   generateMinutes(): void {
-    this.router.navigate(['/sessions', this.sessionId, 'minutes']);
+    const payload = this.buildFullAgendaPayload();
+    this.sessionService
+      .updateAgenda(this.sessionId, payload)
+      .subscribe({
+        next: () => {
+          // only once the server has acknowledged our final save…
+          this.router.navigate(['/sessions', this.sessionId, 'minutes']);
+        },
+        error: err => {
+          console.error('Failed to persist before generating minutes', err);
+          alert('Sorry, could not save your changes. Please try again.');
+        }
+      });
+  }
+
+  /** Shortcut to return the active agenda item */
+  get activeAgendaItem(): AgendaItem | undefined {
+    return this.activeItem == null
+      ? undefined
+      : this.agenda.find(i => i.id === this.activeItem);
   }
 }

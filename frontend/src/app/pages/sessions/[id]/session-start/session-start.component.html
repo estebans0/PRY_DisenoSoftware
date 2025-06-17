@@ -5,7 +5,7 @@
     <div>
       <h1 class="text-3xl font-bold">Session #{{ session.number }}</h1>
       <p class="text-gray-500 mt-1">
-        {{ session.date }} • {{ session.time }} • {{ session.location }}
+        {{ session.date | date:'yyyy-MM-dd' }} • {{ session.time }} • {{ session.location }}
       </p>
     </div>
     <div class="flex gap-2">
@@ -85,7 +85,6 @@
             {{ formatTime(itemTimers[activeItem!].elapsed) }}
             / {{ activeAgendaItem?.duration }} min
           </span>
-          <!-- FIX: toggle play/pause based on running flag -->
           <button
             (click)="
               itemTimers[activeItem!].running
@@ -93,6 +92,7 @@
                 : startAgendaItem(activeItem!)
             "
             class="px-2 py-1 border rounded text-sm"
+            [disabled]="sessionEnded"
           >
             <lucide-icon
               [name]=" itemTimers[activeItem!].running ? 'Pause' : 'Play' "
@@ -131,7 +131,6 @@
           </div>
         </div>
         <div class="flex gap-2">
-          <!-- FIX: reflect running flag per-item -->
           <button
             (click)="
               itemTimers[item.id].running
@@ -139,6 +138,7 @@
                 : startAgendaItem(item.id)
             "
             class="px-2 py-1 border rounded text-sm"
+            [disabled]="sessionEnded"
           >
             <lucide-icon
               [name]=" itemTimers[item.id].running ? 'Pause' : 'Play' "
@@ -168,61 +168,85 @@
           ></textarea>
           <button
             class="mt-2 px-3 py-1 border rounded text-sm"
+            (click)="saveNotes(item.id)"
             [disabled]="sessionEnded"
-          >Save Notes</button>
+          >
+            Save Notes
+          </button>
         </div>
 
         <!-- Voting -->
         <div>
           <h4 class="font-medium">Voting</h4>
           <div class="grid grid-cols-3 gap-4">
+            <!-- In Favor -->
             <div>
-              <label class="block text-sm">In Favor</label>
-              <input
-                type="number"
-                min="0" [max]="attendees.length"
-                [(ngModel)]="item.voting.inFavor"
-                [disabled]="sessionEnded"
-                class="w-full border rounded p-1"
-              />
+              <label class="block text-sm mb-1">In Favor</label>
+              <div *ngFor="let a of attendees" class="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  [checked]="voteSelections[item.id].inFavor.includes(a.id)"
+                  (change)="toggleVote(item.id, 'inFavor', a.id, $any($event.target).checked)"
+                  [disabled]="
+                    sessionEnded
+                    || voteSelections[item.id].against.includes(a.id)
+                    || voteSelections[item.id].abstain.includes(a.id)
+                  "
+                />
+                <span class="ml-2">{{ a.name }}</span>
+              </div>
             </div>
+
+            <!-- Against -->
             <div>
-              <label class="block text-sm">Against</label>
-              <input
-                type="number"
-                min="0" [max]="attendees.length"
-                [(ngModel)]="item.voting.against"
-                [disabled]="sessionEnded"
-                class="w-full border rounded p-1"
-              />
+              <label class="block text-sm mb-1">Against</label>
+              <div *ngFor="let a of attendees" class="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  [checked]="voteSelections[item.id].against.includes(a.id)"
+                  (change)="toggleVote(item.id, 'against', a.id, $any($event.target).checked)"
+                  [disabled]="
+                    sessionEnded
+                    || voteSelections[item.id].inFavor.includes(a.id)
+                    || voteSelections[item.id].abstain.includes(a.id)
+                  "
+                />
+                <span class="ml-2">{{ a.name }}</span>
+              </div>
             </div>
+
+            <!-- Abstain -->
             <div>
-              <label class="block text-sm">Abstain</label>
-              <input
-                type="number"
-                min="0" [max]="attendees.length"
-                [(ngModel)]="item.voting.abstain"
-                [disabled]="sessionEnded"
-                class="w-full border rounded p-1"
-              />
+              <label class="block text-sm mb-1">Abstain</label>
+              <div *ngFor="let a of attendees" class="flex items-center text-sm">
+                <input
+                  type="checkbox"
+                  [checked]="voteSelections[item.id].abstain.includes(a.id)"
+                  (change)="toggleVote(item.id, 'abstain', a.id, $any($event.target).checked)"
+                  [disabled]="
+                    sessionEnded
+                    || voteSelections[item.id].inFavor.includes(a.id)
+                    || voteSelections[item.id].against.includes(a.id)
+                  "
+                />
+                <span class="ml-2">{{ a.name }}</span>
+              </div>
             </div>
           </div>
-          <div class="flex items-center gap-2 mt-2">
-            <label class="block text-sm">Result</label>
-            <select
-              [(ngModel)]="item.voting.result"
-              [disabled]="sessionEnded"
-              class="border rounded p-1"
-            >
-              <option value="">Select result</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="deferred">Deferred</option>
-            </select>
+
+          <!-- Register button + result message -->
+          <div class="mt-4 flex items-center gap-4">
             <button
-              class="px-3 py-1 border rounded text-sm"
+              class="px-4 py-1 bg-blue-600 text-white rounded text-sm"
+              (click)="registerVotes(item.id)"
               [disabled]="sessionEnded"
-            >Record Vote</button>
+            >
+              Register Votes
+            </button>
+            <div *ngIf="voteSelections[item.id].result" class="text-sm">
+              The result of the votes was:
+              <span class="font-medium">{{ voteSelections[item.id].result }}</span>
+            </div>
           </div>
         </div>
 
@@ -255,11 +279,13 @@
           </div>
           <button
             class="mt-2 px-3 py-1 border rounded text-sm"
-            [disabled]="sessionEnded"
             (click)="addTask(item.id)"
-          >Add Task</button>
+            [disabled]="sessionEnded"
+          >
+            Add Task
+          </button>
 
-          <!-- NEW: table of tasks -->
+          <!-- Task list -->
           <div *ngIf="item.tasks.length" class="mt-4 overflow-auto">
             <table class="min-w-full table-auto border-collapse">
               <thead class="bg-gray-50">
@@ -288,9 +314,6 @@
             >
               <lucide-icon name="FileText" class="h-4 w-4 text-gray-400"/>
               <span>{{ d }}</span>
-              <button class="ml-auto">
-                <lucide-icon name="Download" class="h-4 w-4"/>
-              </button>
             </div>
           </ng-container>
           <ng-template #noDocs>
@@ -306,7 +329,9 @@
     <button
       [routerLink]="['/sessions', sessionId]"
       class="px-4 py-2 border rounded text-sm"
-    >Back to Session</button>
+    >
+      Back to Session
+    </button>
     <button
       *ngIf="sessionEnded"
       (click)="generateMinutes()"
