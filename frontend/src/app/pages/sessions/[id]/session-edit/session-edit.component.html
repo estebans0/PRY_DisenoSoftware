@@ -16,7 +16,7 @@
       </h1>
       <div class="flex items-center gap-2">
         <button
-          [routerLink]="['/sessions', sessionId]"
+          routerLink="/sessions"
           class="px-4 py-2 border rounded bg-white hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
         >
           Cancel
@@ -111,8 +111,8 @@
                 [(ngModel)]="sessionData.type"
                 class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               >
-                <option value="ordinary">Ordinary</option>
-                <option value="extraordinary">Extraordinary</option>
+                <option value="Ordinary">Ordinary</option>
+                <option value="Extraordinary">Extraordinary</option>
               </select>
             </div>
           </div>
@@ -154,9 +154,10 @@
               [(ngModel)]="sessionData.modality"
               class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             >
-              <option value="in-person">In Person</option>
-              <option value="virtual">Virtual</option>
-              <option value="hybrid">Hybrid</option>
+              <!-- must match TS: 'In Person' | 'Virtual' | 'Hybrid' -->
+              <option value="In Person">In Person</option>
+              <option value="Virtual">Virtual</option>
+              <option value="Hybrid">Hybrid</option>
             </select>
           </div>
 
@@ -193,7 +194,7 @@
         <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-4">
           <h2 class="text-xl font-semibold dark:text-gray-100">Session Attendees</h2>
           <p class="text-sm text-gray-600 dark:text-gray-400">
-            {{ selectedMembers.length }} of {{ members.length }} selected
+            {{ selectedMemberIds.length }} of {{ members.length }} selected
           </p>
 
           <div class="flex gap-2 mb-4">
@@ -218,7 +219,7 @@
             >
               <input
                 type="checkbox"
-                [checked]="selectedMembers.includes(m.id)"
+                [checked]="selectedMemberIds.includes(m.id)"
                 (change)="toggleMember(m.id)"
                 class="h-4 w-4 text-blue-600"
               />
@@ -286,7 +287,7 @@
           <h2 class="text-xl font-semibold dark:text-gray-100">Session Agenda</h2>
 
           <ng-container *ngFor="let item of agendaItems; let i = index">
-            <div class="border rounded p-4 space-y-4 bg-white dark:bg-gray-800 dark:border-gray-700">
+            <div class="border rounded p-4 bg-white dark:bg-gray-800 dark:border-gray-700 space-y-4">
               <div class="flex items-center justify-between mb-4">
                 <h3 class="text-lg font-medium dark:text-gray-100">Agenda Item #{{ i + 1 }}</h3>
                 <button
@@ -308,19 +309,24 @@
               </div>
 
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <!-- Presenter selector now only shows attendees -->
                 <div class="space-y-2">
                   <label class="block text-sm dark:text-gray-100">Presenter</label>
                   <select
                     [(ngModel)]="item.presenter"
+                    (ngModelChange)="updateAgendaItem(item.id,'presenter',$event)"
                     class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   >
-                    <option *ngFor="let m of members" [value]="m.name">{{ m.name }}</option>
+                    <option value="" disabled>Select presenter</option>
+                    <option *ngFor="let m of attendeeOptions" [value]="m.name">{{ m.name }}</option>
                   </select>
                 </div>
+
                 <div class="space-y-2">
                   <label class="block text-sm dark:text-gray-100">Duration (minutes)</label>
                   <select
                     [(ngModel)]="item.duration"
+                    (ngModelChange)="updateAgendaItem(item.id,'duration',$event)"
                     class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
                   >
                     <option *ngFor="let t of durations" [value]="t">{{ t }} minutes</option>
@@ -330,12 +336,13 @@
 
               <div class="space-y-2">
                 <label class="block font-medium dark:text-gray-100">Supporting Documents</label>
+
                 <ng-container *ngIf="item.documents.length; else noDocs">
                   <div
                     *ngFor="let doc of item.documents; let di = index"
                     class="flex items-center border rounded px-3 py-2 bg-white dark:bg-gray-800 dark:border-gray-600"
                   >
-                    <span class="flex-1 dark:text-gray-100">{{ doc }}</span>
+                    <span class="flex-1 dark:text-gray-100">{{ doc.fileName }}</span>
                     <button
                       (click)="removeAgendaItemDoc(item.id, di)"
                       aria-label="Remove document"
@@ -351,13 +358,39 @@
                   </div>
                 </ng-template>
 
+                <!-- Hidden file input + upload-more button -->
+                <input
+                  #agendaFileInput
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  hidden
+                  (change)="onAgendaFilesSelected($event, item.id)"
+                />
                 <button
                   type="button"
-                  class="mt-2 text-blue-600 hover:underline text-sm dark:text-blue-400"
+                  class="mt-2 text-blue-600 hover:underline text-sm dark:text-blue-400 flex items-center gap-1"
+                  (click)="agendaFileInput.click()"
                 >
                   <lucide-icon name="FileUp" class="h-4 w-4 inline-block"></lucide-icon>
                   Upload More Documents
                 </button>
+
+                <!-- newly selected files -->
+                <ul *ngIf="item.files?.length" class="mt-2 space-y-1">
+                  <li
+                    *ngFor="let f of item.files; let j = index"
+                    class="flex justify-between items-center px-2 py-1 bg-white dark:bg-gray-700 rounded"
+                  >
+                    <span class="truncate">{{ f.name }}</span>
+                    <button
+                      (click)="removeFile(item.id, j)"
+                      class="text-red-500 hover:text-red-700"
+                    >
+                      <lucide-icon name="Trash2" class="h-4 w-4"></lucide-icon>
+                    </button>
+                  </li>
+                </ul>
               </div>
             </div>
           </ng-container>
@@ -389,73 +422,93 @@
 
       <!-- DOCUMENTS -->
       <section *ngSwitchCase="'documents'">
-        <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 p-6 space-y-6">
-          <h2 class="text-xl font-semibold dark:text-gray-100">Supporting Documents</h2>
+        <div class="rounded-lg border p-4 bg-white dark:bg-gray-800 dark:border-gray-700 space-y-4">
+          <h2 class="font-semibold text-lg dark:text-gray-100">Supporting Documents</h2>
 
-          <div class="border-dashed border-2 border-gray-300 dark:border-gray-600 rounded-lg p-12 text-center bg-white dark:bg-gray-800">
-            <lucide-icon name="FileUp" class="h-10 w-10 text-gray-500 dark:text-gray-400"></lucide-icon>
-            <p class="mt-2 dark:text-gray-100">Upload Documents</p>
-            <p class="text-gray-500 text-sm dark:text-gray-400">Drag &amp; drop or click to browse</p>
-            <button class="mt-4 px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1">
-              <lucide-icon name="FileUp" class="h-4 w-4"></lucide-icon>
-              Browse Files
-            </button>
-          </div>
-
-          <div class="space-y-2">
-            <h3 class="font-medium dark:text-gray-100">Uploaded Documents</h3>
-            <div class="border rounded divide-y dark:divide-gray-700">
-              <div
-                *ngFor="let doc of uploadedDocs; let i = index"
-                class="flex items-center justify-between p-3 bg-white dark:bg-gray-800"
+          <!-- Drag & Drop / Browse -->
+          <div
+            class="border border-dashed rounded p-12 flex flex-col items-center text-center dark:border-gray-600 bg-white dark:bg-gray-800"
+            (dragover)="onDocsDragOver($event)"
+            (drop)="onDocsDropped($event)"
+          >
+            <lucide-icon name="FileUp" class="h-8 w-8 text-gray-400 dark:text-gray-500" />
+            <p class="mt-2 text-gray-500 dark:text-gray-400">Drag and drop files here, or click to browse</p>
+            <div class="mt-4">
+              <input
+                #docsInput
+                type="file"
+                accept="application/pdf"
+                multiple
+                hidden
+                (change)="onDocsSelected($event)"
+              />
+              <button
+                (click)="docsInput.click()"
+                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm"
               >
-                <div class="flex items-center gap-2">
-                  <lucide-icon name="FileText" class="h-5 w-5 text-gray-500 dark:text-gray-400"></lucide-icon>
-                  <div>
-                    <p class="font-medium dark:text-gray-100">{{ doc.name }}</p>
-                    <p class="text-xs text-gray-600 dark:text-gray-400">
-                      {{ doc.size }} • Uploaded by {{ doc.by }} on {{ doc.uploadedAt }}
-                    </p>
-                  </div>
-                </div>
-                <button
-                  (click)="removeUploadedDoc(i)"
-                  class="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-                  aria-label="Remove document"
-                >
-                  &times;
-                </button>
-              </div>
+                <lucide-icon name="FileUp" class="h-4 w-4" /> Browse Files
+              </button>
             </div>
           </div>
 
-          <div class="flex justify-between">
+          <!-- Uploaded List -->
+          <ul *ngIf="sessionFiles.length || newSessionFiles.length" class="mt-4 space-y-1">
+            <!-- existing documents -->
+            <li
+              *ngFor="let d of sessionFiles; let i = index"
+              class="flex justify-between items-center px-4 py-2 bg-white dark:bg-gray-700 rounded"
+            >
+              <span class="truncate">{{ d.fileName }}</span>
+              <button
+                (click)="removeDocument(i)"
+                class="text-red-500 hover:text-red-700"
+              >
+                <lucide-icon name="Trash2" class="h-4 w-4" />
+              </button>
+            </li>
+            <!-- newly added documents -->
+            <li
+              *ngFor="let f of newSessionFiles; let j = index"
+              class="flex justify-between items-center px-4 py-2 bg-white dark:bg-gray-700 rounded"
+            >
+              <span class="truncate">{{ f.name }}</span>
+              <button
+                (click)="removeDocument(sessionFiles.length + j)"
+                class="text-red-500 hover:text-red-700"
+              >
+                <lucide-icon name="Trash2" class="h-4 w-4" />
+              </button>
+            </li>
+          </ul>
+
+          <!-- Navigation -->
+          <div class="flex justify-between mt-4">
             <button
               (click)="activeTab='agenda'"
-              class="px-4 py-2 border rounded text-gray-700 dark:text-gray-300 dark:border-gray-600"
+              class="px-4 py-2 border rounded text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             >
               Previous: Agenda
             </button>
             <div class="flex gap-2">
               <button
-                [routerLink]="['/sessions', sessionId]"
-                class="px-4 py-2 border rounded bg-white dark:bg-gray-800 dark:border-gray-600 dark:text-gray-200"
+                routerLink="/sessions"
+                class="px-4 py-2 border rounded text-sm bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
               >
                 Cancel
               </button>
               <button
                 (click)="handleSubmit()"
-                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+                [disabled]="uploading"
+                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm"
               >
-                <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
-                Save
+                <lucide-icon name="Save" class="h-4 w-4" /> Save
               </button>
               <button
                 (click)="handleSaveAndSend()"
-                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1"
+                [disabled]="uploading"
+                class="px-4 py-2 bg-blue-600 text-white rounded flex items-center gap-1 text-sm"
               >
-                <lucide-icon name="Save" class="h-4 w-4"></lucide-icon>
-                Save &amp; Send Notice
+                <lucide-icon name="Save" class="h-4 w-4" /> Save &amp; Send Notice
               </button>
             </div>
           </div>

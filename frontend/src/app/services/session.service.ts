@@ -7,7 +7,7 @@ import { environment } from '../../environments/environment';
 export interface Session {
   _id?: string;
   number: string;
-  type: string;
+  type: 'Ordinary' | 'Extraordinary';
   date:   string;
   time:   string;
   status: string; // 'Scheduled', 'in-progress', 'completed', 'cancelled'
@@ -15,6 +15,9 @@ export interface Session {
   attendees?: any[];
   guests?: any[];
   agenda?: any[];
+  location: string;
+  modality?: 'In Person' | 'Virtual' | 'Hybrid';
+  description?: string;
 }
 
 @Injectable({ providedIn: 'root' })
