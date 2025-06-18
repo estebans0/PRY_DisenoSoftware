@@ -10,7 +10,6 @@ export interface User extends Document {
   email: string;
   tipoUsuario: 'ADMINISTRADOR' | 'JDMEMBER'; //Actualizado segun especificacion
   position: string;
-  organization: string;
   password: string;
   status: 'Active' | 'Inactive';
 
@@ -35,7 +34,6 @@ const userSchema = new Schema<User>(
     },
 
     position:      { type: String, required: true, trim: true, default: 'Unassigned' },
-    organization:  { type: String, required: true, trim: true, default: 'Unassigned' },
 
     password:      { type: String, required: true },
 
