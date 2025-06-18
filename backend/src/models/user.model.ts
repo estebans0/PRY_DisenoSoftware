@@ -8,7 +8,7 @@ export interface User extends Document {
   firstName: string;
   lastName: string;
   email: string;
-  tipoUsuario: 'ADMINISTRADOR' | 'USUARIO';
+  tipoUsuario: 'ADMINISTRADOR' | 'JDMEMBER'; //Actualizado segun especificacion
   position: string;
   organization: string;
   password: string;
@@ -30,8 +30,8 @@ const userSchema = new Schema<User>(
     tipoUsuario:   {
       type:     String,
       required: true,
-      enum:     { values: ['ADMINISTRADOR', 'USUARIO'] },
-      default:  'USUARIO'
+      enum:     { values: ['ADMINISTRADOR', 'JDMEMBER'] },
+      default:  'JDMEMBER'
     },
 
     position:      { type: String, required: true, trim: true, default: 'Unassigned' },
