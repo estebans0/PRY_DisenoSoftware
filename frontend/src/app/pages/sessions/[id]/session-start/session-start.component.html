@@ -175,8 +175,8 @@
           </button>
         </div>
 
-        <!-- Voting -->
-        <div>
+        <!-- Voting - Only shown for Aprobaciones items -->
+        <div *ngIf="showVotingSection(item)">
           <h4 class="font-medium">Voting</h4>
           <div class="grid grid-cols-3 gap-4">
             <!-- In Favor -->
@@ -185,12 +185,12 @@
               <div *ngFor="let a of attendees" class="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  [checked]="voteSelections[item.id].inFavor.includes(a.id)"
-                  (change)="toggleVote(item.id, 'inFavor', a.id, $any($event.target).checked)"
+                  [checked]="voteSelections[item.id]?.inFavor?.includes(a.email)"
+                  (change)="toggleVote(item.id, 'inFavor', a.email, $any($event.target).checked)"
                   [disabled]="
                     sessionEnded
-                    || voteSelections[item.id].against.includes(a.id)
-                    || voteSelections[item.id].abstain.includes(a.id)
+                    || voteSelections[item.id]?.against?.includes(a.email)
+                    || voteSelections[item.id]?.abstain?.includes(a.email)
                   "
                 />
                 <span class="ml-2">{{ a.name }}</span>
@@ -203,12 +203,12 @@
               <div *ngFor="let a of attendees" class="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  [checked]="voteSelections[item.id].against.includes(a.id)"
-                  (change)="toggleVote(item.id, 'against', a.id, $any($event.target).checked)"
+                  [checked]="voteSelections[item.id]?.against?.includes(a.email)"
+                  (change)="toggleVote(item.id, 'against', a.email, $any($event.target).checked)"
                   [disabled]="
                     sessionEnded
-                    || voteSelections[item.id].inFavor.includes(a.id)
-                    || voteSelections[item.id].abstain.includes(a.id)
+                    || voteSelections[item.id]?.inFavor?.includes(a.email)
+                    || voteSelections[item.id]?.abstain?.includes(a.email)
                   "
                 />
                 <span class="ml-2">{{ a.name }}</span>
@@ -221,12 +221,12 @@
               <div *ngFor="let a of attendees" class="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  [checked]="voteSelections[item.id].abstain.includes(a.id)"
-                  (change)="toggleVote(item.id, 'abstain', a.id, $any($event.target).checked)"
+                  [checked]="voteSelections[item.id]?.abstain?.includes(a.email)"
+                  (change)="toggleVote(item.id, 'abstain', a.email, $any($event.target).checked)"
                   [disabled]="
                     sessionEnded
-                    || voteSelections[item.id].inFavor.includes(a.id)
-                    || voteSelections[item.id].against.includes(a.id)
+                    || voteSelections[item.id]?.inFavor?.includes(a.email)
+                    || voteSelections[item.id]?.against?.includes(a.email)
                   "
                 />
                 <span class="ml-2">{{ a.name }}</span>

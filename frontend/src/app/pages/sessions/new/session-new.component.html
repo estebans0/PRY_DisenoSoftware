@@ -240,6 +240,27 @@
               placeholder="Enter agenda item title" />
           </div>
 
+          <!-- TipoPunto (Agenda Item Type) -->
+          <div class="space-y-2">
+            <label class="block text-sm text-gray-700 dark:text-gray-300">Item Type</label>
+            <select
+              [(ngModel)]="item.tipoPunto"
+              (ngModelChange)="updateAgendaItem(item.id,'tipoPunto',$event)"
+              class="w-full border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100">
+              <option *ngFor="let type of tipoPuntoOptions" [value]="type">{{ type }}</option>
+            </select>
+          </div>
+
+          <!-- Description Field -->
+          <div class="space-y-2">
+            <label class="block text-sm text-gray-700 dark:text-gray-300">Description</label>
+            <textarea
+              [(ngModel)]="item.description"
+              (blur)="updateAgendaItem(item.id,'description',item.description)"
+              class="w-full border rounded p-2 min-h-[80px] bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+              placeholder="Enter item description"></textarea>
+          </div>
+
           <!-- Presenter & Duration -->
           <div class="grid gap-4 sm:grid-cols-2">
             <div class="space-y-2">

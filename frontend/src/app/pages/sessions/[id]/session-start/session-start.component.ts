@@ -14,9 +14,10 @@ import {
 } from '@angular/router';
 import { LucideAngularModule }           from 'lucide-angular';
 import { SessionService }                from '../../../../services/session.service';
+import { AgendaItemFactory }             from '../../../../models/agenda-item.model';
 
 interface Attendee {
-  id: number;
+  email: string;  // Use email as the primary identifier
   name: string;
   position: string;
   status: 'Present' | 'Absent';
@@ -74,9 +75,9 @@ export class SessionStartComponent implements OnInit, OnDestroy {
    * in each voting category, plus the computed result.
    */
   voteSelections: Record<number, {
-    inFavor: number[];
-    against: number[];
-    abstain: number[];
+    inFavor: string[];  // These are now email strings
+    against: string[];  // These are now email strings
+    abstain: string[];  // These are now email strings
     result?: string;
   }> = {};
 
@@ -100,39 +101,76 @@ export class SessionStartComponent implements OnInit, OnDestroy {
         if (sess.startTime) this.startTime = new Date(sess.startTime);
         if (sess.endTime)   this.endTime   = new Date(sess.endTime);
 
-        this.attendees = (sess.attendees || []).map((a: any, idx: number) => ({
-          id:       idx + 1,
-          name:     a.name,
-          position: a.role,
-          status:   a.status === 'Confirmed' ? 'Present' : 'Absent'
+        // Update to use email as the identifier
+        this.attendees = (sess.attendees || []).map((a: any) => ({
+          email: a.email || '',  // Use email as the unique ID
+          name: a.name,
+          position: a.role || 'Member',
+          status: 'Present'
         }));
 
+        // Process agenda items
         this.agenda = (sess.agenda || []).map((ai: any) => {
-          const item: AgendaItem = {
-            id:        ai.order,
-            title:     ai.title,
+          // Create the item as before
+          const item = {
+            id: ai.order,
+            title: ai.title,
             presenter: ai.presenter,
-            duration:  ai.duration,
+            duration: ai.duration,
+            tipoPunto: ai.tipoPunto || 'informativa',
+            description: ai.description || '',
             documents: (ai.documents || []).map((d: any) => d.fileName),
-            notes:     ai.notes || '',
-            voting:    { inFavor: 0, against: 0, abstain: 0, result: '' },
-            tasks:     (ai.actions || []).map((t: any) => ({
+            notes: ai.notes || '',
+            tasks: (ai.actions || []).map((t: any) => ({
               description: t.description,
-              assignee:    t.assignee.name
-            }))
+              assignee: t.assignee?.name || ''
+            })),
+            voting: {
+              inFavor: (ai.pro || []).length,
+              against: (ai.against || []).length,
+              abstain: (ai.abstained || []).length,
+              result: ai.decision || ''
+            }
           };
+
+          // Initialize tracking objects
+          this.itemTimers[item.id] = { elapsed: 0, running: false };
+          this.openItems[item.id] = false;
+          this.newTaskDesc[item.id] = '';
+          this.newTaskAssignee[item.id] = '';
+
+          // Initialize vote selections
           this.voteSelections[item.id] = {
-            inFavor: [], against: [], abstain: [], result: ''
+            inFavor: [],
+            against: [],
+            abstain: [],
+            result: ai.decision || ''
           };
+
+          // Fill voting selections from the agenda data
+          if (ai.pro && ai.pro.length) {
+            this.voteSelections[item.id].inFavor = ai.pro
+              .map((p: any) => p.email || '')
+              .filter(Boolean);
+          }
+
+          if (ai.against && ai.against.length) {
+            this.voteSelections[item.id].against = ai.against
+              .map((p: any) => p.email || '')
+              .filter(Boolean);
+          }
+
+          if (ai.abstained && ai.abstained.length) {
+            this.voteSelections[item.id].abstain = ai.abstained
+              .map((p: any) => p.email || '')
+              .filter(Boolean);
+          }
+
           return item;
         });
 
-        for (const it of this.agenda) {
-          this.itemTimers[it.id] = { elapsed: 0, running: false };
-          this.openItems[it.id]  = false;
-          this.newTaskDesc[it.id]     = '';
-          this.newTaskAssignee[it.id] = '';
-        }
+        console.log('Agenda items loaded:', this.agenda);
+        console.log('Vote selections initialized:', this.voteSelections);
       },
       error: err => console.error('Failed to load session for start', err)
     });
@@ -238,17 +276,29 @@ export class SessionStartComponent implements OnInit, OnDestroy {
   // — Voting UI logic —
 
   toggleVote(
-    itemId:      number,
-    category:    'inFavor' | 'against' | 'abstain',
-    attendeeId:  number,
-    checked:     boolean
+    itemId: number,
+    category: 'inFavor' | 'against' | 'abstain',
+    email: string,  // Changed from attendeeId: number
+    checked: boolean
   ): void {
-    const sel = this.voteSelections[itemId][category];
+    // Ensure voteSelections entry exists
+    if (!this.voteSelections[itemId]) {
+      this.voteSelections[itemId] = {
+        inFavor: [],
+        against: [],
+        abstain: []
+      };
+    }
+    
     if (checked) {
-      if (!sel.includes(attendeeId)) sel.push(attendeeId);
+      // Add to selection if not already there
+      if (!this.voteSelections[itemId][category].includes(email)) {
+        this.voteSelections[itemId][category].push(email);
+      }
     } else {
-      const idx = sel.indexOf(attendeeId);
-      if (idx >= 0) sel.splice(idx, 1);
+      // Remove from selection
+      this.voteSelections[itemId][category] = 
+        this.voteSelections[itemId][category].filter(e => e !== email);
     }
   }
 
@@ -361,4 +411,9 @@ export class SessionStartComponent implements OnInit, OnDestroy {
       ? undefined
       : this.agenda.find(i => i.id === this.activeItem);
   }
+
+  showVotingSection(item: any): boolean {
+    return item && item.tipoPunto === 'Aprobaciones';
+  }
+
 }

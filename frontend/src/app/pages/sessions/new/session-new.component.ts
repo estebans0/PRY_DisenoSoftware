@@ -9,6 +9,7 @@ import { MemberService }        from '../../../services/member.service';
 import { AuthService }          from '../../../services/auth.service';
 import { forkJoin, of } from 'rxjs';
 import { switchMap, mapTo, catchError } from 'rxjs/operators';
+import { AgendaItemFactory } from '../../../models/agenda-item.model';
 
 interface MemberOption {
   id:       string;
@@ -22,6 +23,8 @@ interface AgendaItemForm {
   title:     string;
   presenter: string;
   duration:  number;
+  tipoPunto: string;
+  description: string;
   documents: string[];     // unused here
   files:     File[];       // locally selected PDFs
 }
@@ -41,6 +44,8 @@ interface AgendaItemForm {
 export class SessionNewComponent implements OnInit {
   // --- Tabs ---
   activeTab: 'details'|'attendees'|'agenda'|'documents' = 'details';
+
+  tipoPuntoOptions = ['Aprobaciones', 'informativa', 'fondo estrategia y desarrollo', 'varios'];
 
   // --- Members & Attendees ---
   members: MemberOption[]     = [];
@@ -66,7 +71,16 @@ export class SessionNewComponent implements OnInit {
 
   // --- Agenda items ---
   agendaItems: AgendaItemForm[] = [
-    { id: 1, title: '', presenter: '', duration: 15, documents: [], files: [] }
+    { 
+      id: 1, 
+      title: '', 
+      presenter: '', 
+      duration: 15, 
+      tipoPunto: 'informativa', 
+      description: '', 
+      documents: [], 
+      files: [] 
+    }
   ];
   durations = [5,10,15,20,30,45,60];
 
@@ -135,21 +149,36 @@ export class SessionNewComponent implements OnInit {
    * Only those members that were checked in the Attendees tab 
    */
   get attendeeOptions(): MemberOption[] {
-    return this.members.filter(m => this.selectedMemberIds.includes(m.id));
+    // Start with selected members
+    const memberOptions = this.members
+      .filter(m => this.selectedMemberIds.includes(m.id));
+    
+    // Add guests with proper formatting
+    const guestOptions = this.guests.map(g => ({
+      id: `guest-${g.id}`,
+      name: g.name || `Guest (${g.email})`,
+      position: 'Guest',
+      email: g.email
+    }));
+    
+    // Return combined list
+    return [...memberOptions, ...guestOptions];
   }
   
   addAgendaItem() {
     const nextId = this.agendaItems.length
       ? Math.max(...this.agendaItems.map(i => i.id)) + 1
       : 1;
-    this.agendaItems.push({
-      id:        nextId,
-      title:     '',
-      presenter: '',
-      duration:  15,
-      documents: [],
-      files:     []
+    
+    const newItem = AgendaItemFactory.create('informativa', {
+      id: nextId,
+      duration: 15
     });
+    
+    this.agendaItems.push({
+      ...newItem,
+      files: []  // Add the files property for UI handling
+    } as AgendaItemForm);
   }
   removeAgendaItem(id: number) {
     if (this.agendaItems.length > 1) {
@@ -157,9 +186,22 @@ export class SessionNewComponent implements OnInit {
     }
   }
   updateAgendaItem(id: number, field: keyof AgendaItemForm, value: any) {
-    this.agendaItems = this.agendaItems.map(i =>
-      i.id === id ? { ...i, [field]: value } : i
-    );
+    this.agendaItems = this.agendaItems.map(i => {
+      if (i.id === id) {
+        // If changing the item type, use factory to recreate with proper structure
+        if (field === 'tipoPunto') {
+          const updatedItem = AgendaItemFactory.create(value, {
+            ...i,
+            tipoPunto: value
+          });
+          return { ...updatedItem, files: i.files } as AgendaItemForm;
+        } else {
+          // Normal field update
+          return { ...i, [field]: value };
+        }
+      }
+      return i;
+    });
   }
 
   private addFilesToAgendaItem(itemId: number, newFiles: File[]) {
@@ -241,6 +283,8 @@ export class SessionNewComponent implements OnInit {
       title:         i.title     || 'Untitled',
       presenter:     i.presenter || 'Unknown',
       duration:      i.duration,
+      tipoPunto:     i.tipoPunto || 'informativa',
+      description:   i.description || '',
       estimatedTime: i.duration,
       documents:     (i.files || []).map(f => ({
         fileName:   f.name,
