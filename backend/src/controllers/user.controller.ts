@@ -18,6 +18,7 @@ const signToken = (user: User): string =>
 
 /**
  * GET /api/users
+ * Get all users
  */
 export const list: RequestHandler = async (_req, res, next) => {
   try {
@@ -30,6 +31,7 @@ export const list: RequestHandler = async (_req, res, next) => {
 
 /**
  * GET /api/users/:id
+ * Get a specific user by ID
  */
 export const getOne: RequestHandler = async (req, res, next) => {
   try {
@@ -46,10 +48,11 @@ export const getOne: RequestHandler = async (req, res, next) => {
 
 /**
  * POST /api/users
+ * Create a new user
  */
 export const create: RequestHandler = async (req, res, next) => {
   try {
-    // schema defaults status→Active, tipoUsuario, position, organization
+    // schema defaults: status→Active, tipoUsuario→JDMEMBER, position→Unassigned
     const newUser = new UserModel({ ...req.body });
     await newUser.save();
     res.status(201).json(newUser);
@@ -60,6 +63,7 @@ export const create: RequestHandler = async (req, res, next) => {
 
 /**
  * PUT /api/users/:id
+ * Update an existing user
  */
 export const update: RequestHandler = async (req, res, next) => {
   try {
@@ -80,6 +84,7 @@ export const update: RequestHandler = async (req, res, next) => {
 
 /**
  * DELETE /api/users/:id
+ * Remove a user
  */
 export const remove: RequestHandler = async (req, res, next) => {
   try {
@@ -96,16 +101,19 @@ export const remove: RequestHandler = async (req, res, next) => {
 
 /**
  * POST /api/users/register
+ * Register a new user (defaults to JDMEMBER type)
  */
 export const register: RequestHandler = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, confirmPassword } =
+    const { firstName, lastName, email, password, confirmPassword, tipoUsuario, position } =
       req.body as {
         firstName: string;
         lastName: string;
         email: string;
         password: string;
         confirmPassword: string;
+        tipoUsuario?: 'ADMINISTRADOR' | 'JDMEMBER';
+        position?: string;
       };
 
     // 1) Required
@@ -126,13 +134,15 @@ export const register: RequestHandler = async (req, res) => {
       return;
     }
 
-    // 4) Create with default status = "Active"
+    // 4) Create with defaults from schema
     const newUser = new UserModel({
       firstName,
       lastName,
       email,
       password,
-      // defaults: tipoUsuario='USUARIO', position/organization='Unassigned', status='Active'
+      tipoUsuario: tipoUsuario || 'JDMEMBER', // Default from schema is JDMEMBER
+      position: position || 'Unassigned',     // Default from schema
+      // status: 'Active' // Default from schema
     });
     await newUser.save();
 
@@ -147,7 +157,6 @@ export const register: RequestHandler = async (req, res) => {
         email: newUser.email,
         tipoUsuario: newUser.tipoUsuario,
         position: newUser.position,
-        organization: newUser.organization,
         status: newUser.status
       }
     });
@@ -159,6 +168,7 @@ export const register: RequestHandler = async (req, res) => {
 
 /**
  * POST /api/users/login
+ * User login
  */
 export const login: RequestHandler = async (req, res) => {
   try {
@@ -197,7 +207,6 @@ export const login: RequestHandler = async (req, res) => {
         email: user.email,
         tipoUsuario: user.tipoUsuario,
         position: user.position,
-        organization: user.organization,
         status: user.status
       }
     });
