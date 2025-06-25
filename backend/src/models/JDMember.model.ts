@@ -16,3 +16,6 @@ const jdMemberSchema = new Schema<JDMember>(
         position: { type: String, required: true, trim: true }
     }
 );
+
+
+export const JDMemberModel = model<JDMember>('JDMember', jdMemberSchema);

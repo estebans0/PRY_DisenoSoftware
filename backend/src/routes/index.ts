@@ -4,6 +4,7 @@ import sessionRoutes from './session.routes';  // Import session routes
 import * as settingsCtrl from '../controllers/settings.controller';
 import userRouter from './user.routes';
 import sessionRouter from './session.routes';
+import jdMemberRoutes from './JDMember.routes';
 import multer from 'multer';
 const upload = multer({ dest: 'uploads/' });
 
@@ -19,5 +20,6 @@ router.put('/settings', settingsCtrl.updateSettings);
 // user endpoints
 router.use('/users', userRouter);
 router.use('/sessions', sessionRouter);
+router.use('/jdmembers', jdMemberRoutes);
 
 export default router;
