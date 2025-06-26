@@ -5,9 +5,12 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import { Session } from '../models/session.model'; // Import Session model
+import { SessionAgenda } from '../models/agenda.model';
+import { SessionQueryService } from '../services/services.visitor';
 
 // Helper for validating ObjectIDs
 const isValidObjectId = (id: string) => ObjectId.isValid(id) && new ObjectId(id).toString() === id;
+const queryService = new SessionQueryService(); // servicio del visitor
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../../uploads');
@@ -334,6 +337,138 @@ export const removeAgendaItemByNumber: RequestHandler = async (req, res, next) =
       agendaItemId
     );
     res.json(updatedSession);
+  } catch (err) {
+    next(err);
+  }
+};
+
+//controladores del visitor
+export const getSessionsByPresenter: RequestHandler = async (req, res, next) => {
+  try {
+    const { presenterEmail } = req.params;
+    
+    if (!presenterEmail) {
+      res.status(400).json({ message: 'Presenter email is required' });
+      return;
+    }
+
+    const sessions = await queryService.getSessionsByPresenter(presenterEmail);
+    res.json(sessions);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getResponsiblePoints: RequestHandler = async (req, res, next) => {
+  try {
+    const { memberEmail } = req.params;
+    
+    if (!memberEmail) {
+      res.status(400).json({ message: 'Member email is required' });
+      return;
+    }
+
+    const results = await queryService.getResponsiblePoints(memberEmail);
+    res.json(results);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getAbsentSessions: RequestHandler = async (req, res, next) => {
+  try {
+    const { memberEmail } = req.params;
+    
+    if (!memberEmail) {
+      res.status(400).json({ message: 'Member email is required' });
+      return;
+    }
+
+    const sessions = await queryService.getAbsentSessions(memberEmail);
+    res.json(sessions);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSessionsInDateRange: RequestHandler = async (req, res, next) => {
+  try {
+    const { start, end } = req.query;
+    
+    if (!start || !end) {
+      res.status(400).json({ 
+        message: 'Both start and end dates are required as query parameters' 
+      });
+      return;
+    }
+
+    const startDate = new Date(start as string);
+    const endDate = new Date(end as string);
+    
+    if (isNaN(startDate.getTime())) {
+      res.status(400).json({ message: 'Invalid start date format' });
+      return;
+    }
+    
+    if (isNaN(endDate.getTime())) {
+      res.status(400).json({ message: 'Invalid end date format' });
+      return;
+    }
+
+    const sessions = await queryService.getSessionsInDateRange(startDate, endDate);
+    res.json(sessions);
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSessionDetailsById: RequestHandler = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: 'Invalid session ID' });
+      return;
+    }
+
+    const session = await queryService.getSessionById(id);
+    
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Controlador para filtrar actas donde el usuario es expositor o responsable
+export const getFilteredMinutes: RequestHandler = async (req, res, next) => {
+  try {
+    const { memberEmail } = req.params;
+    const { filterType } = req.query; // 'presenter' o 'responsible'
+    
+    if (!memberEmail) {
+      res.status(400).json({ message: 'Member email is required' });
+      return;
+    }
+
+    let results;
+    
+    if (filterType === 'presenter') {
+      results = await queryService.getSessionsByPresenter(memberEmail);
+    } else if (filterType === 'responsible') {
+      results = await queryService.getResponsiblePoints(memberEmail);
+    } else {
+      res.status(400).json({ 
+        message: 'Invalid filter type. Use "presenter" or "responsible"' 
+      });
+      return;
+    }
+
+    res.json(results);
   } catch (err) {
     next(err);
   }

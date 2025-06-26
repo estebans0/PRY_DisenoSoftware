@@ -1,4 +1,5 @@
-import { Schema, model, Document, ObjectId } from 'mongoose';
+import { Schema, model, Document, ObjectId, Types } from 'mongoose';
+import { ISessionVisitor, IVisitableSession } from '../Visitor/visitor.interfaces';
 
 // Action interface
 interface IAction {
@@ -11,6 +12,7 @@ interface IAction {
 
 // Document interface for storing in SupportingDocuments
 interface ISupportingDocument {
+  _id: Types.ObjectId;
   fileName: string;
   fileType: string;
   fileSize: number;
@@ -30,7 +32,7 @@ interface IAgendaItem {
   Against: number;
   EstimatedTime: number;
   Actions?: IAction[];
-  SupportingDocuments?: ISupportingDocument[];
+  SupportingDocuments?: Types.ObjectId[];
 }
 
 interface IGuest {
@@ -39,7 +41,7 @@ interface IGuest {
   email: string;
 }
 
-export interface ISession extends Document {
+export interface ISession extends Document, IVisitableSession {
   SessionID: ObjectId;
   number: string;
   date: Date;
@@ -105,5 +107,12 @@ const SessionSchema = new Schema<ISession>({
   status: String,
   description: String,
 }, { timestamps: true });
+
+SessionSchema.methods.accept = async function(visitor: ISessionVisitor): Promise<void> {
+    await visitor.visitSession(this);
+    for (const item of this.agenda) {
+        await visitor.visitAgendaItem(item);
+    }
+};
 
 export const Session = model<ISession>('Session', SessionSchema);

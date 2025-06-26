@@ -43,4 +43,11 @@ router.post("/:id/end", SessionController.endSession); // Nueva ruta
 router.post('/:id/guests', SessionController.addGuest);
 router.delete('/:id/guests', SessionController.removeGuest); //id sesion 
 
+//routes visitor
+router.get('/presenter/:presenterEmail', SessionController.getSessionsByPresenter);
+router.get('/responsible/:memberEmail', SessionController.getResponsiblePoints);
+router.get('/absent/:memberEmail', SessionController.getAbsentSessions);
+router.get('/date-range', SessionController.getSessionsInDateRange);
+router.get('/details/:id', SessionController.getSessionDetailsById);
+router.get('/filter-minutes/:memberEmail', SessionController.getFilteredMinutes);
 export default router;
