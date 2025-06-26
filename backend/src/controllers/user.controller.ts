@@ -3,6 +3,7 @@ import { RequestHandler } from 'express';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import { UserModel, User } from '../models/user.model';
 import dotenv from 'dotenv';
+import { JDMemberAdapter } from '../adapters/JDMemberAdapter';
 
 dotenv.config();
 const JWT_SECRET: jwt.Secret =
@@ -16,9 +17,7 @@ const signToken = (user: User): string =>
     expiresIn: JWT_EXPIRES_IN
   });
 
-/**
- * GET /api/users
- */
+
 export const list: RequestHandler = async (_req, res, next) => {
   try {
     const users = await UserModel.find().lean();
@@ -30,10 +29,11 @@ export const list: RequestHandler = async (_req, res, next) => {
 
 /**
  * GET /api/users/:id
+ * Get a specific user by ID
  */
 export const getOne: RequestHandler = async (req, res, next) => {
   try {
-    const user = await UserModel.findById(req.params.id).lean();
+    const user = await UserModel.findOne({ email: req.params.email }).lean();
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
@@ -46,12 +46,19 @@ export const getOne: RequestHandler = async (req, res, next) => {
 
 /**
  * POST /api/users
+ * Create a new user
  */
 export const create: RequestHandler = async (req, res, next) => {
   try {
-    // schema defaults status→Active, tipoUsuario, position, organization
+    // schema defaults: status→Active, tipoUsuario→JDMEMBER, position→Unassigned
     const newUser = new UserModel({ ...req.body });
     await newUser.save();
+    
+    // Use the adapter to create a JDMember if applicable
+    if (newUser.tipoUsuario === 'JDMEMBER') {
+      await JDMemberAdapter.adaptUser(newUser);
+    }
+    
     res.status(201).json(newUser);
   } catch (err) {
     next(err);
@@ -60,18 +67,26 @@ export const create: RequestHandler = async (req, res, next) => {
 
 /**
  * PUT /api/users/:id
+ * Update an existing user
  */
 export const update: RequestHandler = async (req, res, next) => {
   try {
-    const updated = await UserModel.findByIdAndUpdate(
-      req.params.id,
+    const updated = await UserModel.findOneAndUpdate(
+      { email: req.params.email },
       req.body,
       { new: true, runValidators: true }
-    ).lean();
+    );
+    
     if (!updated) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
+    
+    // Use the adapter to update JDMember if applicable
+    if (updated.tipoUsuario === 'JDMEMBER') {
+      await JDMemberAdapter.adaptUser(updated);
+    }
+    
     res.json(updated);
   } catch (err) {
     next(err);
@@ -80,14 +95,21 @@ export const update: RequestHandler = async (req, res, next) => {
 
 /**
  * DELETE /api/users/:id
+ * Remove a user
  */
 export const remove: RequestHandler = async (req, res, next) => {
   try {
-    const deleted = await UserModel.findByIdAndDelete(req.params.id).lean();
-    if (!deleted) {
+    const user = await UserModel.findOne({ email: req.params.email });
+    if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
     }
+    
+    // Use adapter to remove JDMember if applicable
+    await JDMemberAdapter.removeJDMember(user);
+    
+    // Now delete the user
+    await UserModel.findOneAndDelete({ email: req.params.email });
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -96,16 +118,19 @@ export const remove: RequestHandler = async (req, res, next) => {
 
 /**
  * POST /api/users/register
+ * Register a new user (defaults to JDMEMBER type)
  */
 export const register: RequestHandler = async (req, res) => {
   try {
-    const { firstName, lastName, email, password, confirmPassword } =
+    const { firstName, lastName, email, password, confirmPassword, tipoUsuario, position } =
       req.body as {
         firstName: string;
         lastName: string;
         email: string;
         password: string;
         confirmPassword: string;
+        tipoUsuario?: 'ADMINISTRADOR' | 'JDMEMBER';
+        position?: string;
       };
 
     // 1) Required
@@ -126,17 +151,26 @@ export const register: RequestHandler = async (req, res) => {
       return;
     }
 
-    // 4) Create with default status = "Active"
+    // 4) Create with defaults from schema
     const newUser = new UserModel({
       firstName,
       lastName,
       email,
       password,
-      // defaults: tipoUsuario='USUARIO', position/organization='Unassigned', status='Active'
+      tipoUsuario: tipoUsuario || 'JDMEMBER', // Default from schema is JDMEMBER
+      position: position || 'Unassigned',     // Default from schema
+      // status: 'Active' // Default from schema
     });
+    
+    // 5) Save user
     await newUser.save();
+    
+    // Use the adapter if applicable
+    if (newUser.tipoUsuario === 'JDMEMBER') {
+      await JDMemberAdapter.adaptUser(newUser);
+    }
 
-    // 5) Sign token & return
+    // 6) Sign token & return
     const token = signToken(newUser);
     res.status(201).json({
       token,
@@ -147,7 +181,6 @@ export const register: RequestHandler = async (req, res) => {
         email: newUser.email,
         tipoUsuario: newUser.tipoUsuario,
         position: newUser.position,
-        organization: newUser.organization,
         status: newUser.status
       }
     });
@@ -159,6 +192,7 @@ export const register: RequestHandler = async (req, res) => {
 
 /**
  * POST /api/users/login
+ * User login
  */
 export const login: RequestHandler = async (req, res) => {
   try {
@@ -197,7 +231,6 @@ export const login: RequestHandler = async (req, res) => {
         email: user.email,
         tipoUsuario: user.tipoUsuario,
         position: user.position,
-        organization: user.organization,
         status: user.status
       }
     });

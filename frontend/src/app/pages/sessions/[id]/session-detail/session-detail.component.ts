@@ -1,8 +1,10 @@
+// src/app/pages/sessions/[id]/session-detail/session-detail.component.ts
 import { Component, OnInit }            from '@angular/core';
 import { CommonModule }                 from '@angular/common';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { LucideAngularModule }          from 'lucide-angular';
-import { SessionService }                from '../../../../services/session.service';
+import { SessionService, Session }      from '../../../../services/session.service';
+import { environment }                  from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-session-detail',
@@ -16,179 +18,119 @@ import { SessionService }                from '../../../../services/session.serv
   styleUrls: ['./session-detail.component.scss']
 })
 export class SessionDetailComponent implements OnInit {
-  // default to overview so it shows immediately
   activeTab: 'overview' | 'agenda' | 'attendees' | 'documents' = 'overview';
+  sessionId!: string;
+  session!: Session;
 
-  sessionId!: number;
-  session!: {
-    id: number;
-    number: string;
-    type: string;
-    date: string;
-    time: string;
-    status: string;
-    quorum: string;
-    modality: string;
-    location: string;
-    description: string;
-    createdBy: string;
-    createdAt: string;
-  };
-
-  attendees: { id:number; name:string; position:string; status:string }[] = [];
-  agenda:    { id:number; title:string; presenter:string; duration:number; documents:string[] }[] = [];
-  documents: { id:number; name:string; size:string; uploadedBy:string; uploadedAt:string }[] = [];
+  attendees: { name: string; position: string; status: string }[] = [];
+  agenda:    { title: string; presenter: string; duration: number; documents: { fileName: string; filePath: string }[] }[] = [];
+  documents: { name: string; filePath: string; size: string; uploadedBy: string; uploadedAt: string }[] = [];
 
   confirmedCount = 0;
   pendingCount   = 0;
   declinedCount  = 0;
   totalDuration  = 0;
 
+  showQuorumError = false;
+
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
+    private route:          ActivatedRoute,
+    private router:         Router,
     private sessionService: SessionService
   ) {}
 
   ngOnInit(): void {
-    const idParam = this.route.snapshot.paramMap.get('id');
-    if (idParam === 'new') {
-      window.location.href = '/sessions/new';
+    const id = this.route.snapshot.paramMap.get('id');
+    if (!id || id === 'new') {
+      this.router.navigate(['/sessions/new']);
       return;
     }
-    this.sessionId = Number(idParam);
-    
-    // Cargar datos reales de la sesión
+    this.sessionId = id;
     this.loadSessionData();
   }
-  loadSessionData(): void {
-    this.sessionService.getSession(this.sessionId.toString()).subscribe(
-      (session: any) => {
-        this.session = {
-          id: session._id,
-          number: session.number,
-          type: session.type,
-          date: session.date,
-          time: session.time,
-          status: session.status === 'completed' ? 'Completed' : 
-                 session.status === 'in-progress' ? 'In Progress' : 'Scheduled',
-          quorum: this.calculateQuorum(session),
-          modality: session.modality,
-          location: session.location,
-          description: session.description || '',
-          createdBy: 'Admin', // Puedes obtener esto de session.createdBy si lo tienes
-          createdAt: session.createdAt || new Date().toISOString()
-        };
-        
-        this.attendees = session.attendees.map((a: { memberId: any; name: any; position: any; status: string; }) => ({
-          id: a.memberId,
-          name: a.name || 'Member',
-          position: a.position || 'Board Member',
-          status: this.mapStatus(a.status)
+
+  private loadSessionData(): void {
+    this.sessionService.getSession(this.sessionId).subscribe(
+      sess => {
+        this.session = sess;
+
+        // -- Attendees --
+        this.attendees = (sess.attendees || []).map(a => ({
+          name:     a.name,
+          position: a.role,
+          status:   this.capitalize(a.status)
         }));
-        
-        this.agenda = session.agenda.map((item: { title: any; presenter: any; duration: any; documents: any; }, index: number) => ({
-          id: index + 1,
-          title: item.title,
+
+        // -- Agenda (per‐item docs only) --
+        this.agenda = (sess.agenda || []).map((item: any) => ({
+          title:     item.title,
           presenter: item.presenter,
-          duration: item.duration,
-          documents: item.documents || []
+          duration:  item.duration,
+          documents: (item.documents || []).map((d: any) => ({
+            fileName: d.fileName,
+            filePath: d.filePath
+          }))
         }));
-        
-        this.updateCounts();
+
+        // -- Top‐level documents --
+        this.documents = (sess.documents || []).map((d: any) => ({
+          name:       d.fileName,
+          filePath:   d.filePath,
+          size:       this.humanFileSize(d.fileSize),
+          uploadedBy: sess.createdBy?.name || 'Unknown',
+          // format uploadDate to yyyy-MM-dd
+          uploadedAt: new Date(d.uploadDate).toISOString().split('T')[0]
+        }));
+
+        // -- Totals --
+        this.confirmedCount = this.attendees.filter(a => a.status === 'Confirmed').length;
+        this.pendingCount   = this.attendees.filter(a => a.status === 'Pending').length;
+        this.declinedCount  = this.attendees.filter(a => a.status === 'Declined').length;
+        this.totalDuration  = this.agenda.reduce((sum, itm) => sum + itm.duration, 0);
       },
-      (err: any) => {
-        console.error('Error loading session', err);
-       
-        this.loadMockData(); // Fallback a datos mock si hay error
-      }
+      err => console.error('Could not load session', err)
     );
   }
 
-  private calculateQuorum(session: any): string {
-    const presentCount = session.attendees.filter((a: { status: string; }) => a.status === 'present').length;
-    const total = session.attendees.length;
-    return presentCount >= Math.ceil(total / 2) ? 'Achieved' : 'Pending';
+  private humanFileSize(bytes: number): string {
+    const thresh = 1024;
+    if (Math.abs(bytes) < thresh) return bytes + ' B';
+    const units = ['KB','MB','GB','TB'];
+    let u = -1;
+    do {
+      bytes /= thresh;
+      ++u;
+    } while (Math.abs(bytes) >= thresh && u < units.length - 1);
+    return bytes.toFixed(1) + ' ' + units[u];
   }
 
-  private mapStatus(status: string): string {
-    switch (status) {
-      case 'present': return 'Confirmed';
-      case 'absent': return 'Declined';
-      case 'confirmed': return 'Confirmed';
-      case 'pending': return 'Pending';
-      case 'declined': return 'Declined';
-      default: return 'Pending';
-    }
+  private capitalize(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   }
 
-  private updateCounts(): void {
-    this.confirmedCount = this.attendees.filter(a => a.status === 'Confirmed').length;
-    this.pendingCount = this.attendees.filter(a => a.status === 'Pending').length;
-    this.declinedCount = this.attendees.filter(a => a.status === 'Declined').length;
-    this.totalDuration = this.agenda.reduce((sum, item) => sum + item.duration, 0);
-  }
-
-  /** navigate to /sessions/:id/edit */
-  goToEdit() {
+  goToEdit(): void {
     this.router.navigate(['/sessions', this.sessionId, 'edit']);
   }
 
-  /** navigate to /sessions/:id/start */
-  goToStart() {
-    this.router.navigate(['/sessions', this.sessionId, 'start']);
+  onStartSession(): void {
+    // only allow if quorum is Achieved
+    if (this.session.quorum !== 'Achieved') {
+      this.showQuorumError = true;
+      return;
+    }
+    
+    this.sessionService.startSession(this.sessionId).subscribe({
+      next: () => this.router.navigate(['/sessions', this.sessionId, 'start']),
+      error: err => console.error('Unable to start session', err)
+    });
+  }
+  
+  closeQuorumDialog(): void {
+    this.showQuorumError = false;
   }
 
-  private loadMockData() {
-    const id = this.sessionId;
-    this.session = {
-      id,
-      number: id === 1 ? '001' : id === 2 ? '002' : `S-2025-00${id}`,
-      type:    id % 2 === 0 ? 'Extraordinary' : 'Ordinary',
-      date:    id <= 2     ? '2025-05-15'          : '2025-04-30',
-      time:    id % 2 === 0 ? '2:00 PM'            : '10:00 AM',
-      status:  id <= 2     ? 'Scheduled'          : 'Completed',
-      quorum:  id <= 2     ? 'Pending'            : 'Achieved',
-      modality:id % 2 === 0 ? 'Virtual'            : 'In Person',
-      location:id % 2 === 0
-                ? 'Virtual Meeting (Zoom)'
-                : 'Board Room A, Main Building',
-      description: 'Regular monthly board meeting to discuss ongoing projects and financial updates.',
-      createdBy:   'John Doe',
-      createdAt:   '2025-05-01'
-    };
-
-    this.attendees = [
-      { id: 1, name: 'John Doe',       position: 'Chairperson',      status: 'Confirmed' },
-      { id: 2, name: 'Jane Smith',     position: 'Vice Chairperson', status: 'Confirmed' },
-      { id: 3, name: 'Robert Johnson', position: 'Secretary',        status: 'Pending'   },
-      { id: 4, name: 'Emily Davis',    position: 'Treasurer',        status: 'Confirmed' },
-      { id: 5, name: 'Michael Wilson', position: 'Board Member',     status: 'Declined'  },
-      { id: 6, name: 'Sarah Thompson', position: 'Board Member',     status: 'Pending'   },
-      { id: 7, name: 'David Martinez', position: 'Board Member',     status: 'Confirmed' },
-      { id: 8, name: 'Jennifer Garcia',position: 'Board Member',     status: 'Pending'   },
-    ];
-
-    this.agenda = [
-      { id: 1, title: 'Approval of Previous Minutes', presenter: 'John Doe',      duration: 10, documents: ['previous_minutes.pdf'] },
-      { id: 2, title: 'Financial Report Q1 2025',     presenter: 'Emily Davis',    duration: 20, documents: ['financial_report_q1_2025.pdf','budget_comparison.xlsx'] },
-      { id: 3, title: 'Strategic Plan Update',        presenter: 'Jane Smith',     duration: 30, documents: ['strategic_plan_update.pptx'] },
-      { id: 4, title: 'New Project Proposals',        presenter: 'David Martinez', duration: 20, documents: ['project_proposals.pdf'] },
-      { id: 5, title: 'Any Other Business',           presenter: 'John Doe',       duration: 10, documents: [] },
-    ];
-
-    this.documents = [
-      { id:1, name:'previous_minutes.pdf',       size:'1.2 MB', uploadedBy:'Robert Johnson', uploadedAt:'2025-05-01' },
-      { id:2, name:'financial_report_q1_2025.pdf',size:'3.5 MB', uploadedBy:'Emily Davis',    uploadedAt:'2025-05-05' },
-      { id:3, name:'budget_comparison.xlsx',     size:'0.8 MB', uploadedBy:'Emily Davis',    uploadedAt:'2025-05-05' },
-      { id:4, name:'strategic_plan_update.pptx', size:'5.2 MB', uploadedBy:'Jane Smith',      uploadedAt:'2025-05-08' },
-      { id:5, name:'project_proposals.pdf',      size:'2.7 MB', uploadedBy:'David Martinez',  uploadedAt:'2025-05-10' },
-    ];
-
-    this.confirmedCount = this.attendees.filter(a => a.status==='Confirmed').length;
-    this.pendingCount   = this.attendees.filter(a => a.status==='Pending').length;
-    this.declinedCount  = this.attendees.filter(a => a.status==='Declined').length;
-    this.totalDuration  = this.agenda.reduce((sum, item) => sum + item.duration, 0);
+  viewMinutes(): void {
+    this.router.navigate(['/sessions', this.sessionId, 'minutes']);
   }
 
   isActive(tab: 'overview'|'agenda'|'attendees'|'documents'): boolean {
@@ -202,5 +144,12 @@ export class SessionDetailComponent implements OnInit {
       case 'declined':  return 'bg-red-100   text-red-800     dark:bg-red-900     dark:text-red-100';
       default:          return 'bg-gray-100  text-gray-800    dark:bg-gray-800    dark:text-gray-100';
     }
+  }
+
+  /**
+   * Returns a URL to download a file that lives on the uploads folder.
+   */
+  getDownloadUrl(path: string): string {
+    return `${environment.apiUrl.replace(/\/$/, '')}/uploads/${path}`;
   }
 }

@@ -1,9 +1,10 @@
-import { Request, Response, NextFunction, RequestHandler } from 'express';
-import * as SessionService from '../services/session.service';
-import { ObjectId } from 'mongodb';
+// backend/src/controllers/session.controller.ts
+import { Request, Response, NextFunction } from 'express';
+import { Types } from 'mongoose';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+
 import { Session } from '../models/session.model'; // Import Session model
 import { SessionAgenda } from '../models/agenda.model';
 import { SessionQueryService } from '../services/services.visitor';
@@ -12,158 +13,102 @@ import { SessionQueryService } from '../services/services.visitor';
 const isValidObjectId = (id: string) => ObjectId.isValid(id) && new ObjectId(id).toString() === id;
 const queryService = new SessionQueryService(); // servicio del visitor
 
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// ——— Setup ———
+const uploadDir = path.join(__dirname, '../../uploads');
+if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+export const upload = multer({ storage: multer.memoryStorage() });
+
+// Validate a MongoDB ObjectId
+function isValidObjectId(id: string): boolean {
+  return Types.ObjectId.isValid(id) && new Types.ObjectId(id).toString() === id;
 }
 
-// annotate each export as a RequestHandler
-export const list: RequestHandler = async (req, res, next) => {
+// ——— CRUD ———
+
+// GET /sessions
+export async function list(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const sessions = await SessionService.getAllSessions();
+    const sessions = await Session.find();
     res.json(sessions);
-    return;
   } catch (err) {
     next(err);
   }
-};
+}
 
-// Add agenda items to a session
-export const addAgendaItems: RequestHandler = async (req, res, next) => {
+// POST /sessions
+export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const { _id, __v, ...data } = req.body;
+    // set defaults
+    data.status = data.status || 'Scheduled';
+    data.quorum = data.quorum || 'Pending';
+
+    const session = new Session(data);
+    const saved = await session.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// GET /sessions/:id
+export async function getOne(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!isValidObjectId(req.params.id)) {
       res.status(400).json({ message: 'Invalid session ID' });
       return;
     }
-
-    // Check if session exists
-    const session = await SessionService.getSessionById(req.params.id);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
-
-    // Add or update agenda items
-    const updatedSession = await SessionService.addAgendaItems(req.params.id, req.body.agenda);
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Replace all agenda items in a session
-export const updateAgenda: RequestHandler = async (req, res, next) => {
-  try {
-    if (!isValidObjectId(req.params.id)) {
-      res.status(400).json({ message: 'Invalid session ID' });
-      return;
-    }
-
-    // Check if session exists
-    const session = await SessionService.getSessionById(req.params.id);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
-
-    // Update agenda items
-    const updatedSession = await SessionService.updateAgenda(req.params.id, req.body.agenda);
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Delete an agenda item from a session
-export const removeAgendaItem: RequestHandler = async (req, res, next) => {
-  try {
-    if (!isValidObjectId(req.params.sessionId) || !isValidObjectId(req.params.itemId)) {
-      res.status(400).json({ message: 'Invalid ID' });
-      return;
-    }
-
-    const updatedSession = await SessionService.removeAgendaItem(req.params.sessionId, req.params.itemId);
-    if (!updatedSession) {
-      res.status(404).json({ message: 'Session or agenda item not found' });
-      return;
-    }
-
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const create: RequestHandler = async (req, res, next) => {
-  try {
-    // Strip server-generated fields
-    const { _id, SessionID, ...sessionData } = req.body;
-    
-    // Process attendees if they exist
-    const processedData = {
-      ...sessionData,
-      attendees: sessionData.attendees?.map((a: any) => ({
-        memberId: a.memberId,
-        status: a.status,
-        role: a.role
-      }))
-    };
-    
-    // Create the session (agenda will be included if provided)
-    const newSession = await SessionService.createSession(processedData);
-    
-    res.status(201).json(newSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const getOne: RequestHandler = async (req, res, next) => {
-  try {
-    const sess = await SessionService.getSessionById(req.params.id);
+    const sess = await Session.findById(req.params.id);
     if (!sess) {
       res.sendStatus(404);
       return;
     }
     res.json(sess);
-    return;
   } catch (err) {
     next(err);
   }
-};
+}
 
-export const update: RequestHandler = async (req, res, next) => {
+// PUT /sessions/:id
+export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const updatedSess = await SessionService.updateSession(req.params.id, req.body);
-    if (!updatedSess) {
+    const updated = await Session.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true, context: 'query' }
+    );
+    if (!updated) {
       res.sendStatus(404);
       return;
     }
-    res.json(updatedSess);
-    return;
+    res.json(updated);
   } catch (err) {
     next(err);
   }
-};
+}
 
-export const remove: RequestHandler = async (req, res, next) => {
+// DELETE /sessions/:id
+export async function remove(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     if (!isValidObjectId(req.params.id)) {
       res.status(400).json({ message: 'Invalid session ID' });
       return;
     }
-
-    const success = await SessionService.deleteSession(req.params.id);
-    success ? res.sendStatus(204) : res.sendStatus(404);
+    const result = await Session.findByIdAndDelete(req.params.id);
+    result ? res.sendStatus(204) : res.sendStatus(404);
   } catch (err) {
     next(err);
   }
 }
- // Matias Leer
-export const startSession: RequestHandler = async (req, res, next) => {
+
+// POST /sessions/:id/start
+export async function startSession(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
-    const session = await SessionService.startSession(req.params.id);
+    const session = await Session.findByIdAndUpdate(
+      req.params.id,
+      { status: 'In Progress', startTime: new Date() },
+      { new: true, runValidators: true, context: 'query' }
+    );
     if (!session) {
       res.sendStatus(404);
       return;
@@ -172,12 +117,46 @@ export const startSession: RequestHandler = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-};
+}
 
-export const endSession: RequestHandler = async (req, res, next) => {
+function sanitizeAgenda(rawAgenda: any[]): any[] {
+  return rawAgenda.map(item => ({
+    order:         item.order,
+    title:         item.title,
+    duration:      item.duration,
+    presenter:     item.presenter,
+    estimatedTime: item.estimatedTime,
+    pro:           item.pro,
+    against:       item.against,
+    abstained:     item.abstained,
+    notes:         item.notes || '', 
+    actions:       (item.actions || []).map((a: any) => ({
+                     description: a.description,
+                     assignee:    { name: a.assignee.name },
+                     dueDate:     a.dueDate
+                   })),
+    documents:     item.documents || [],
+    decision:      item.decision || null
+  }));
+}
+
+// — POST /sessions/:id/end —
+export async function endSession(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { agenda } = req.body;
-    const session = await SessionService.endSession(req.params.id, agenda);
+    const sanitized = sanitizeAgenda(req.body.agenda || []);
+    const session = await Session.findByIdAndUpdate(
+      req.params.id,
+      {
+        status:    'Completed',
+        endTime:   new Date(),
+        agenda:    sanitized
+      },
+      { new: true, runValidators: true, context: 'query' }
+    );
     if (!session) {
       res.sendStatus(404);
       return;
@@ -186,157 +165,249 @@ export const endSession: RequestHandler = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-};
+}
 
-/** Agregar un invitado a una sesión */
-export const addGuest: RequestHandler = async (req, res, next) => {
+// ——— Agenda Items by ID ———
+
+// POST /sessions/:id/agenda
+export async function addAgendaItems(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { sessionId } = req.params;
+    const { id } = req.params;
+    if (!isValidObjectId(id)) {
+      res.status(400).json({ message: 'Invalid session ID' });
+      return;
+    }
+    const session: any = await Session.findById(id);
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    session.agenda.push(...req.body.agenda);
+    await session.save();
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// — PUT /sessions/:id/agenda —
+export async function updateAgenda(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    if (!isValidObjectId(req.params.id)) {
+      res.status(400).json({ message: 'Invalid session ID' });
+      return;
+    }
+    const session: any = await Session.findById(req.params.id);
+    if (!session) {
+      res.sendStatus(404);
+      return;
+    }
+    session.agenda = sanitizeAgenda(req.body.agenda || []);
+    await session.save();
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /sessions/:sessionId/agenda/:itemId
+export async function removeAgendaItem(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { sessionId, itemId } = req.params;
+    if (!isValidObjectId(sessionId) || !isValidObjectId(itemId)) {
+      res.status(400).json({ message: 'Invalid ID' });
+      return;
+    }
+    const session: any = await Session.findById(sessionId);
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    session.agenda = session.agenda.filter((ai: any) => ai._id.toString() !== itemId);
+    await session.save();
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ——— Agenda Items by Number ———
+
+// GET /sessions/number/:number
+export async function getOneByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const session = await Session.findOne({ number: req.params.number });
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /sessions/number/:number
+export async function updateByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const session = await Session.findOneAndUpdate(
+      { number: req.params.number },
+      req.body,
+      { new: true, runValidators: true, context: 'query' }
+    );
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /sessions/number/:number
+export async function removeByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const sessionNumber = req.params.number;
+    const session      = await Session.findOne({ number: sessionNumber });
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    const result = await Session.findOneAndDelete({ number: sessionNumber });
+    result ? res.sendStatus(204) : res.status(500).json({ message: 'Error deleting session' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// POST /sessions/number/:number/agenda
+export async function addAgendaItemsByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const session: any = await Session.findOne({ number: req.params.number });
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    session.agenda.push(...req.body.agenda);
+    await session.save();
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// PUT /sessions/number/:number/agenda
+export async function updateAgendaByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const session: any = await Session.findOne({ number: req.params.number });
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    session.agenda = req.body.agenda;
+    await session.save();
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// DELETE /sessions/number/:number/agenda/:itemId
+export async function removeAgendaItemByNumber(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const session: any = await Session.findOne({ number: req.params.number });
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
+    session.agenda = session.agenda.filter((ai: any) => ai._id.toString() !== req.params.itemId);
+    await session.save();
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ——— Guests ———
+
+// POST /sessions/:sessionId/guests
+export async function addGuest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const session: any = await Session.findById(req.params.sessionId);
+    if (!session) {
+      res.status(404).json({ message: 'Session not found' });
+      return;
+    }
     const { name, email } = req.body;
-
-    if (!name || !email) {
-      res.status(400).json({ message: "Guest name and email are required" });
+    if (!email) {
+      res.status(400).json({ message: 'Guest email is required' });
       return;
     }
-
-    const updatedSession = await SessionService.addGuestToSession(sessionId, { name, email });
-    
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-export const removeGuest: RequestHandler = async (req, res, next) => {
-  try {
-    const { sessionId, guestId } = req.params;
-    const updatedSession = await SessionService.removeGuestFromSession(sessionId, Number(guestId));
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-
-// Get session by number
-export const getOneByNumber: RequestHandler = async (req, res, next) => {
-  try {
-    const session = await SessionService.getSessionByNumber(req.params.number);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
+    const newGuest = { id: session.guests.length + 1, name, email };
+    session.guests.push(newGuest);
+    await session.save();
     res.json(session);
   } catch (err) {
     next(err);
   }
-};
+}
 
-// Update session by number
-export const updateByNumber: RequestHandler = async (req, res, next) => {
+// DELETE /sessions/:sessionId/guests/:guestId
+export async function removeGuest(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
-    const { _id, SessionID, ...updates } = req.body;
-    const session = await SessionService.updateSessionByNumber(req.params.number, updates);
+    const session: any = await Session.findById(req.params.sessionId);
     if (!session) {
       res.status(404).json({ message: 'Session not found' });
       return;
     }
+    session.guests = session.guests.filter((g: any) => g.id !== Number(req.params.guestId));
+    await session.save();
     res.json(session);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Delete session by number
-export const removeByNumber: RequestHandler = async (req, res, next) => {
-  try {
-    const sessionNumber = req.params.number;
-    
-    // First check if the session exists
-    const session = await SessionService.getSessionByNumber(sessionNumber);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
-    
-    // Delete the session
-    const success = await SessionService.deleteSessionByNumber(sessionNumber);
-    if (success) {
-      res.sendStatus(204); // No Content - successful deletion
-    } else {
-      res.status(500).json({ message: 'Error deleting session' });
-    }
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Add agenda items by session number
-export const addAgendaItemsByNumber: RequestHandler = async (req, res, next) => {
-  try {
-    const sessionNumber = req.params.number;
-    
-    // Check if session exists
-    const session = await SessionService.getSessionByNumber(sessionNumber);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
-    
-    // Add agenda items
-    const updatedSession = await SessionService.addAgendaItemsByNumber(
-      sessionNumber, 
-      req.body.agenda
-    );
-    
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Update agenda by session number
-export const updateAgendaByNumber: RequestHandler = async (req, res, next) => {
-  try {
-    const sessionNumber = req.params.number;
-    
-    // Check if session exists
-    const session = await SessionService.getSessionByNumber(sessionNumber);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
-
-    // Update agenda
-    const updatedSession = await SessionService.updateAgendaItemsByNumber(
-      sessionNumber, 
-      req.body.agenda
-    );
-    res.json(updatedSession);
-  } catch (err) {
-    next(err);
-  }
-};
-
-// Remove agenda item from session by number
-export const removeAgendaItemByNumber: RequestHandler = async (req, res, next) => {
-  try {
-    const sessionNumber = req.params.number;
-    const agendaItemId = req.params.itemId;
-    
-    // Check if session exists
-    const session = await SessionService.getSessionByNumber(sessionNumber);
-    if (!session) {
-      res.status(404).json({ message: 'Session not found' });
-      return;
-    }
-
-    // Remove agenda item
-    const updatedSession = await SessionService.removeAgendaItemByNumber(
-      sessionNumber,
-      agendaItemId
-    );
-    res.json(updatedSession);
   } catch (err) {
     next(err);
   }
@@ -473,3 +544,55 @@ export const getFilteredMinutes: RequestHandler = async (req, res, next) => {
     next(err);
   }
 };
+
+
+// ——— Upload multiple PDFs per agenda item ———
+
+// POST /sessions/:id/agenda/:order/documents
+export const uploadDocuments = [
+  upload.array('files'),
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    try {
+      const { id, order } = req.params;
+      if (!isValidObjectId(id)) {
+        res.status(400).json({ message: 'Invalid session ID' });
+        return;
+      }
+      const session: any = await Session.findById(id);
+      if (!session) {
+        res.sendStatus(404);
+        return;
+      }
+      const item: any = session.agenda.find((ai: any) => ai.Orden === +order);
+      if (!item) {
+        res.status(404).json({ message: 'Agenda item not found' });
+        return;
+      }
+
+      const docs = (req.files as Express.Multer.File[]).map(file => {
+        if (path.extname(file.originalname).toLowerCase() !== '.pdf') {
+          throw new Error('Only PDF files are allowed');
+        }
+        const fname = `${session.number}-agenda${order}-${Date.now()}-${file.originalname}`;
+        const fpath = path.join(uploadDir, fname);
+        fs.writeFileSync(fpath, file.buffer);
+
+        const doc = {
+          fileName:   file.originalname,
+          fileType:   file.mimetype,
+          fileSize:   file.size,
+          filePath:   fname,
+          uploadDate: new Date()
+        };
+        item.SupportingDocuments = item.SupportingDocuments || [];
+        item.SupportingDocuments.push(doc);
+        return doc;
+      });
+
+      await session.save();
+      res.json(docs);
+    } catch (err) {
+      next(err);
+    }
+  }
+];

@@ -1,7 +1,7 @@
+// src/app/pages/sessions/[id]/session-minutes/session-minutes.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
 import { ActivatedRoute } from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 import { SessionService } from '../../../../services/session.service';
@@ -9,29 +9,17 @@ import { environment } from '../../../../../environments/environment';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-interface Attendee { 
-  id: string; 
-  name: string; 
-  position: string; 
+interface Attendee {
+  id: string;
+  name: string;
+  position: string;
   status: 'Present'|'Absent';
 }
 
-interface Task { 
-  description: string; 
-  assignee: string; 
-  dueDate: string; 
-}
-
-interface AgendaItem {
-  id: number;
-  title: string;
-  presenter: string;
-  duration: number;
-  actualDuration: number;
-  notes: string;
-  voting: { inFavor: number; against: number; abstain: number; result: string };
-  tasks: Task[];
-  supportingDocuments: SupportingDocument[];
+interface Task {
+  description: string;
+  assignee: string;
+  dueDate: string;
 }
 
 interface SupportingDocument {
@@ -40,17 +28,30 @@ interface SupportingDocument {
   url: string;
 }
 
+interface AgendaItem {
+  id: number;
+  title: string;
+  presenter: string;
+  duration: number;
+  actualDuration: number;
+  notes: string;                                        // ← now actually populated
+  voting: { inFavor: number; against: number; abstain: number; result: string };
+  tasks: Task[];
+  supportingDocuments: SupportingDocument[];
+}
+
 interface Session {
-  id: string; 
-  number: string; 
-  type: string; 
+  id: string;
+  number: string;
+  type: string;
   date: string;
-  time: string; 
-  endTime: string; 
-  status: string; 
+  time: string;
+  startTime: string;
+  endTime: string;
+  status: string;
   quorum: string;
-  location: string; 
-  modality: string; 
+  location: string;
+  modality: string;
   description: string;
   attendees: Attendee[];
 }
@@ -61,7 +62,7 @@ interface Session {
   imports: [
     CommonModule,
     FormsModule,
-    LucideAngularModule
+    LucideAngularModule,
   ],
   templateUrl: './session-minutes.component.html',
   styleUrls: ['./session-minutes.component.scss']
@@ -69,30 +70,26 @@ interface Session {
 export class SessionMinutesComponent implements OnInit {
   sessionId!: string;
   activeTab: 'preview'|'edit'|'settings' = 'preview';
-  
-  // Data properties
+
   session: Session | null = null;
+  attendees: Attendee[] = [];
   agenda: AgendaItem[] = [];
   totalDuration = 0;
   presentCount = 0;
-  
-  // API state
-  isLoadingSession = false;
-  sessionError: string | null = null;
-  
-  // File upload
-  selectedFiles: File[] = [];
-  uploadProgress = 0;
-  currentUploadingItem: number | null = null;
-
-  // Minutes generation
   presentList = '';
   absentList = '';
   today = new Date();
   minutesContent = '';
   private originalContent = '';
-  
-  // Document settings
+
+  // file-upload + UI
+  selectedFiles: File[] = [];
+  uploadProgress = 0;
+  currentUploadingItem: number | null = null;
+  loading = true;
+  error: string | null = null;
+
+  // settings
   organizationName = 'Board of Directors';
   documentTitle = 'MINUTES OF MEETING';
   includeMeetingDetails = true;
@@ -101,355 +98,230 @@ export class SessionMinutesComponent implements OnInit {
   includeNextMeeting = true;
   includeSignatures = true;
   paperSize = 'letter';
-  orientation: 'portrait' | 'p' | 'landscape' | 'l' = 'portrait';
-
-  // Add this to your SessionMinutesComponent class properties
-  attendees: Attendee[] = [];
-
-  // Add these properties if they don't exist
-  loading: boolean = true;
-  error: string | null = null;
-
-  // Add these properties
-  preparedBy: string = '';
-  approvedBy: string = '';
-  approvalDate: string = '';
+  orientation: 'portrait'|'landscape' = 'portrait';
+  preparedBy = '';
+  approvedBy = '';
+  approvalDate = '';
 
   constructor(
     private route: ActivatedRoute,
-    private http: HttpClient,
     private sessionService: SessionService
   ) {}
 
   ngOnInit(): void {
-    // Add debugging to see if this is being called
-    console.log('SessionMinutesComponent initialized');
-
     this.route.params.subscribe(params => {
-      const sessionId = params['id'];
-      console.log('Session ID from route:', sessionId);
-
-      if (sessionId) {
-        this.loadSessionData(sessionId);
-      } else {
-        console.error('No session ID provided in route');
-      }
+      const id = params['id'];
+      if (id) this.loadSessionData(id);
+      else this.error = 'No session ID in route';
     });
   }
 
-  loadSessionData(sessionId: string): void {
+  private loadSessionData(id: string) {
     this.loading = true;
     this.error = null;
-    this.sessionId = sessionId;
-    
-    console.log('Attempting to load session with ID:', sessionId);
-    console.log('API URL being called:', `${environment.apiUrl}/sessions/${sessionId}`);
-    
-    this.sessionService.getSession(sessionId).subscribe({
-      next: (data) => {
-        console.log('SUCCESS - Session data received:', data);
-        
-        // Transform session data
-        this.session = this.transformSessionData(data);
-        
-        // Extract and transform agenda data directly from the session
-        if (data.agenda && data.agenda.length > 0) {
-          this.transformAgendaData(data.agenda);
-        } else {
-          this.agenda = [];
-        }
-        
-        // If session has attendees, process them
-        if (data.attendees && data.attendees.length > 0) {
-          this.processAttendees(data.attendees);
-        } else {
-          this.attendees = [];
-        }
-        
-        // Update generated minutes content
+    this.sessionId = id;
+
+    this.sessionService.getSession(id).subscribe({
+      next: data => {
+        // session header
+        this.session = {
+          id:          data._id!,
+          number:      data.number,
+          type:        data.type,
+          date:        data.date,
+          time:        data.time,
+          startTime:   data.startTime || '',
+          endTime:     data.endTime   || '',
+          status:      data.status,
+          quorum:      data.quorum,
+          location:    data.location,
+          modality:    data.modality!,
+          description: data.description || '',
+          attendees:   []
+        };
+
+        // attendees
+        this.attendees = (data.attendees || []).map(a => ({
+          id:       a._id,
+          name:     a.name,
+          position: a.role,
+          status:   a.status === 'Confirmed' ? 'Present' : 'Absent'
+        }));
+        this.updateAttendanceLists();
+
+        // agenda items
+        this.agenda = (data.agenda || []).map((item: any) => {
+          const inFav = (item.pro || []).length;
+          const agn   = (item.against || []).length;
+          const abst  = (item.abstained || []).length;
+          return {
+            id:               item.order,
+            title:            item.title,
+            presenter:        item.presenter,
+            duration:         item.duration,
+            actualDuration:   item.estimatedTime,
+            notes:            item.notes || '',             // ← HERE we pull in the saved notes
+            voting: {
+              inFavor: inFav,
+              against: agn,
+              abstain: abst,
+              result:  item.decision || this.determineVotingResult(inFav, agn)
+            },
+            tasks: (item.actions || []).map((t: any) => ({
+              description: t.description,
+              assignee:    t.assignee.name,
+              dueDate:     t.dueDate
+                              ? new Date(t.dueDate).toLocaleDateString()
+                              : 'N/A'
+            })),
+            supportingDocuments: (item.documents || []).map((d: any) => ({
+              id:       d._id,
+              filename: d.fileName,
+              url:      `${environment.apiUrl}/uploads/${d.filePath}`
+            }))
+          };
+        });
+        this.totalDuration = this.agenda
+          .map(i => i.actualDuration)
+          .reduce((sum, v) => sum + v, 0);
+
+        // now build the markdown + html preview
         this.updateMinutesContent();
-        
         this.loading = false;
       },
-      error: (err) => {
-        console.error('ERROR loading session:', err);
-        console.error('Error status:', err.status);
-        console.error('Error message:', err.message);
-        console.error('Error details:', err.error);
-        this.error = 'Failed to load session data. Please try again later.';
+      error: err => {
+        console.error(err);
+        this.error = 'Failed to load session data.';
         this.loading = false;
       }
     });
   }
-  
-  // Transform backend session format to our interface
-  transformSessionData(data: any): Session {
-    return {
-      id: data._id,
-      number: data.number || 'N/A',
-      type: data.type || 'Regular',
-      date: data.date || 'N/A',
-      time: data.time || 'N/A',
-      endTime: data.endTime || 'N/A',
-      status: data.status || 'Pending',
-      quorum: data.quorum ? 'Achieved' : 'Not Achieved',
-      location: data.location || 'N/A',
-      modality: data.modality || 'N/A',
-      description: data.description || '',
-      attendees: [] // This will be populated separately
-    };
-  }
-  
-  // Process attendees directly from session data
-  processAttendees(attendeeData: any[]) {
-    // Simple processing - in a real app you might fetch more user details
-    this.attendees = attendeeData.map(att => ({
-      id: att._id || att.memberId,
-      name: att.memberId, // Ideally you would fetch the full name from user service
-      position: att.role || 'Member',
-      status: att.status === 'confirmed' ? 'Present' : 'Absent'
-    }));
-    
-    // Update attendee counters and lists
-    this.updateAttendanceLists();
-  }
-  
-  // Helper method to update attendance lists
-  updateAttendanceLists() {
-    if (!this.session) return;
-    
-    this.presentCount = this.attendees.filter(a => a.status === 'Present').length;
-    
+
+  private updateAttendanceLists() {
+    this.presentCount = this.attendees.filter(a => a.status==='Present').length;
     this.presentList = this.attendees
-      .filter(a => a.status === 'Present')
+      .filter(a => a.status==='Present')
       .map(a => `${a.name} (${a.position})`)
-      .join('; ');
-      
+      .join('; ') || 'None';
     this.absentList = this.attendees
-      .filter(a => a.status === 'Absent')
+      .filter(a => a.status==='Absent')
       .map(a => `${a.name} (${a.position})`)
-      .join('; ');
-      
-    this.session.attendees = this.attendees;
+      .join('; ') || 'None';
+    if (this.session) this.session.attendees = this.attendees;
   }
-  
-  // Transform backend agenda format to our interface
-  transformAgendaData(agendaData: any[]) {
-    this.agenda = agendaData.map((item: any) => {
-      return {
-        id: item.Orden,
-        title: item.Titulo,
-        presenter: item.Presenter,
-        duration: item.EstimatedTime || 0,
-        actualDuration: item.Duration || 0,
-        notes: item.Notas || '',
-        voting: {
-          inFavor: item.Pro || 0,
-          against: item.Against || 0,
-          abstain: 0,
-          result: this.determineVotingResult(item.Pro || 0, item.Against || 0)
-        },
-        tasks: (item.Actions || []).map((action: any) => ({
-          description: action.Descripcion || '',
-          assignee: action.Responsable || 'Unassigned',
-          dueDate: action.DueDate || 'Not specified'
-        })),
-        supportingDocuments: (item.SupportingDocuments || []).map((doc: any) => ({
-          id: doc._id || '',
-          filename: doc.filename || 'Unnamed document',
-          url: doc.url || '#'
-        }))
-      };
-    });
-    
-    this.totalDuration = this.agenda.reduce((sum, a) => sum + a.actualDuration, 0);
+
+  private determineVotingResult(pro: number, against: number) {
+    if (pro===0 && against===0) return 'No Vote';
+    if (pro > against) return 'Approved';
+    if (against > pro) return 'Rejected';
+    return 'Deferred';
   }
-  
-  // Determine voting result based on counts
-  determineVotingResult(pro: number, against: number): string {
-    if (pro === 0 && against === 0) return 'No Vote';
-    return pro > against ? 'Approved' : 'Rejected';
-  }
-  
-  // Update minutes content when data changes
-  updateMinutesContent() {
-    this.originalContent = this.generateMarkdown();
-    this.minutesContent = this.originalContent;
-  }
-  
-  // UI control methods
+
+  // ─── Preview / Edit / Settings ───
+
   setActiveTab(tab: 'preview'|'edit'|'settings') {
     this.activeTab = tab;
+    if (tab==='preview') this.updateMinutesContent();
   }
-  
-  handlePrint() { 
-    window.print(); 
-  }
-  
-  handleDownloadPDF() { 
-    // Get the printable element
-    const printableElement = document.querySelector('.printable');
-    
-    if (!printableElement) {
-      console.error('Could not find printable element');
-      return;
-    }
 
-    // Show loading indicator
-    const loadingMessage = document.createElement('div');
-    loadingMessage.textContent = 'Preparing PDF...';
-    loadingMessage.style.position = 'fixed';
-    loadingMessage.style.top = '50%';
-    loadingMessage.style.left = '50%';
-    loadingMessage.style.transform = 'translate(-50%, -50%)';
-    loadingMessage.style.padding = '10px 20px';
-    loadingMessage.style.background = 'rgba(0,0,0,0.7)';
-    loadingMessage.style.color = 'white';
-    loadingMessage.style.borderRadius = '5px';
-    loadingMessage.style.zIndex = '9999';
-    document.body.appendChild(loadingMessage);
+  private updateMinutesContent() {
+    this.originalContent = this.generateMarkdown();
+    this.minutesContent  = this.originalContent;
+  }
 
-    setTimeout(() => {
-      // Configure html2canvas
-      html2canvas(printableElement as HTMLElement, {
-        scale: 2, 
-        useCORS: true,
-        allowTaint: true,
-        scrollX: 0,
-        scrollY: -window.scrollY 
-      }).then(canvas => {
-        // Create PDF
-        const pdf = new jsPDF({
-          orientation: this.orientation as ('portrait' | 'p' | 'landscape' | 'l'),
-          unit: 'mm',
-          format: this.paperSize
-        });
-        
-        // Get PDF dimensions
-        const imgWidth = pdf.internal.pageSize.getWidth();
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        
-        // Calculate number of pages
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        let heightLeft = imgHeight;
-        let position = 0;
-        let pageNumber = 1;
-        
-        // Add first page image
-        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-        
-        // Add additional pages if content is long
-        while (heightLeft >= 0) {
-          position = heightLeft - imgHeight;
-          pdf.addPage();
-          pageNumber++;
-          pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, position, imgWidth, imgHeight);
-          heightLeft -= pageHeight;
-        }
-        
-        // Generate filename
-        const fileName = `Minutes-${this.session?.number || 'Session'}-${new Date().toISOString().slice(0,10)}.pdf`;
-        
-        // Remove loading indicator
-        document.body.removeChild(loadingMessage);
-        
-        // Save PDF directly
-        pdf.save(fileName);
-      });
-    }, 100);
-  }
-  
-  resetToOriginal() { 
-    this.minutesContent = this.originalContent; 
-  }
-  
-  saveChanges() { 
-    console.log('Saving changes to minutes content');
-    
-    // Create a document object
-    const minutesDocument = {
-      sessionId: this.sessionId,
-      content: this.minutesContent,
-      version: new Date().toISOString(),
-      preparedBy: this.preparedBy,
-      approvedBy: this.approvedBy,
+  resetToOriginal() { this.minutesContent = this.originalContent; }
+
+  saveChanges() {
+    const doc = {
+      sessionId:    this.sessionId,
+      content:      this.minutesContent,
+      preparedBy:   this.preparedBy,
+      approvedBy:   this.approvedBy,
       approvalDate: this.approvalDate
     };
-    
-    // Save to local storage for now
-    localStorage.setItem(`minutes-${this.sessionId}`, JSON.stringify(minutesDocument));
-    
-    // Show success message
-    alert('Minutes content saved successfully!');
-  }
-  
-  applySettings() {
-    console.log('Settings applied');
-    this.updateMinutesContent();
+    localStorage.setItem(`minutes-${this.sessionId}`, JSON.stringify(doc));
+    alert('Minutes saved locally.');
   }
 
-  // Generate markdown for minutes
+  applySettings() {
+    this.updateMinutesContent();
+    this.activeTab = 'preview';
+  }
+
+  // ─── Print / PDF ───
+
+  handlePrint() { window.print(); }
+
+  handleDownloadPDF() {
+    const element = document.querySelector('.printable') as HTMLElement;
+    if (!element) return alert('Nothing to print');
+    html2canvas(element, { scale:2 }).then(canvas => {
+      const pdf = new jsPDF({
+        orientation: this.orientation,
+        unit: 'mm',
+        format: this.paperSize
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const imgW = pdf.internal.pageSize.getWidth();
+      const imgH = (canvas.height * imgW) / canvas.width;
+      pdf.addImage(imgData,'PNG',0,0,imgW,imgH);
+      pdf.save(`Minutes-${this.session?.number}.pdf`);
+    });
+  }
+
+  // ─── Markdown generator ───
+
   private generateMarkdown(): string {
     if (!this.session) return '';
-    
-    let md = `# ${this.documentTitle}\n\n`;
-    md += `## ${this.organizationName}\n\n`;
-    
+    let md = `# ${this.documentTitle}\n\n## ${this.organizationName}\n\n`;
+
     if (this.includeMeetingDetails) {
-      md += `**Meeting Number:** ${this.session.number}\n`;
-      md += `**Date:** ${this.session.date}\n`;
-      md += `**Time:** ${this.session.time} to ${this.session.endTime}\n`;
-      md += `**Location:** ${this.session.location}\n`;
-      md += `**Modality:** ${this.session.modality}\n\n`;
+      md += `**Session #** ${this.session.number}\n\n`;
+      md += `**Date:**   ${this.session.date}\n\n`;
+      md += `**Time:**   ${this.session.time} to ${this.session.endTime}\n\n`;
+      md += `**Location:** ${this.session.location} (${this.session.modality})\n\n`;
+      md += `**Quorum:**   ${this.session.quorum} (${this.presentCount} present)\n\n`;
     }
-    
+
     if (this.includeAttendance) {
       md += `## Attendance\n\n`;
-      md += `**Present:** ${this.presentList || 'None'}\n\n`;
-      md += `**Absent:** ${this.absentList || 'None'}\n\n`;
+      md += `**Present:** ${this.presentList}\n\n`;
+      md += `**Absent:**  ${this.absentList}\n\n`;
     }
-    
-    if (this.includeAgenda && this.agenda.length > 0) {
-      md += `## Agenda Items\n\n`;
-      
-      this.agenda.forEach(item => {
-        md += `### ${item.id}. ${item.title}\n\n`;
-        md += `**Presenter:** ${item.presenter}\n`;
-        md += `**Duration:** ${item.actualDuration} minutes\n\n`;
-        
-        if (item.notes) {
-          md += `${item.notes}\n\n`;
+
+    if (this.includeAgenda && this.agenda.length) {
+      md += `## Agenda & Discussions\n\n`;
+      this.agenda.forEach((it, idx) => {
+        md += `### ${idx+1}. ${it.title}\n\n`;
+        md += `- Presenter: ${it.presenter}\n`;
+        md += `- Duration:  ${it.actualDuration} minutes\n\n`;
+        // now include the saved notes under “Discussion:”
+        if (it.notes) {
+          md += `**Discussion:**\n${it.notes}\n\n`;
         }
-        
-        // Add voting information
-        md += `**Voting:** ${item.voting.inFavor} in favor, ${item.voting.against} against - ${item.voting.result}\n\n`;
-        
-        // Add tasks if any
-        if (item.tasks && item.tasks.length > 0) {
-          md += `**Tasks:**\n`;
-          item.tasks.forEach(task => {
-            md += `- ${task.description} (Assigned to: ${task.assignee}, Due: ${task.dueDate})\n`;
+        md += `**Voting:**   ${it.voting.inFavor} in favor, ${it.voting.against} against, ${it.voting.abstain} abstain\n\n`;
+        md += `**Decision:** ${it.voting.result}\n\n`;
+        if (it.tasks.length) {
+          md += `**Action Items:**\n`;
+          it.tasks.forEach(t => {
+            md += `- ${t.description} (Assigned to ${t.assignee}, Due ${t.dueDate})\n`;
           });
           md += `\n`;
         }
       });
     }
-    
-    // Add next meeting section
+
     if (this.includeNextMeeting) {
-      md += `## Next Meeting\n\n`;
-      md += `The next meeting is scheduled for May 31, 2025 at 10:00 AM.\n\n`;
+      md += `## Next Meeting\n\nNext meeting scheduled for May 31, 2025 at 10:00 AM.\n\n`;
     }
-    
-    // Add signatures section
+
     if (this.includeSignatures) {
       md += `## Signatures\n\n`;
-      md += `Minutes Prepared By: _______________________\n\n`;
-      md += `Approved By: _______________________\n\n`;
-      md += `Date: _______________________\n`;
+      md += `- Minutes Prepared By: ${this.preparedBy   || '________________'}\n`;
+      md += `- Approved By:       ${this.approvedBy   || '________________'}\n`;
+      md += `- Approval Date:     ${this.approvalDate|| '________________'}\n`;
     }
-    
+
     return md;
   }
 }

@@ -1,9 +1,29 @@
 // src/app/pages/sessions/[id]/session-edit/session-edit.component.ts
-import { Component, OnInit }                  from '@angular/core';
-import { CommonModule }                        from '@angular/common';
-import { FormsModule }                         from '@angular/forms';
+import { Component, OnInit }                   from '@angular/core';
+import { CommonModule }                         from '@angular/common';
+import { FormsModule }                          from '@angular/forms';
 import { RouterModule, ActivatedRoute, Router } from '@angular/router';
-import { LucideAngularModule }                 from 'lucide-angular';
+import { LucideAngularModule }                  from 'lucide-angular';
+import { forkJoin, of }                         from 'rxjs';
+import { switchMap, catchError, mapTo }         from 'rxjs/operators';
+
+import { SessionService } from '../../../../services/session.service';
+import { MemberService }  from '../../../../services/member.service';
+
+interface MemberOption {
+  id:       string;
+  name:     string;
+  position: string;
+  email:    string;
+}
+interface AgendaItemForm {
+  id:        number;
+  title:     string;
+  presenter: string;
+  duration:  number;
+  documents: any[];  // existing docs metadata
+  files:     File[]; // newly added PDFs
+}
 
 @Component({
   selector: 'app-session-edit',
@@ -18,192 +38,284 @@ import { LucideAngularModule }                 from 'lucide-angular';
   styleUrls: ['./session-edit.component.scss']
 })
 export class SessionEditComponent implements OnInit {
+  // ─── Tabs ───
   activeTab: 'details'|'attendees'|'agenda'|'documents' = 'details';
+
+  // ─── Loading & Routing ───
   isLoading = true;
   sessionId!: string;
 
-  // bound form controls
-  date = '2025-05-15';
+  // ─── Form state ───
+  date = '';
   sessionData = {
     number:     '',
-    type:       'ordinary',
+    type:       'Ordinary' as 'Ordinary'|'Extraordinary',
     time:       '10:00',
-    modality:   'in-person',
+    modality:   'In Person' as 'In Person'|'Virtual'|'Hybrid',
     location:   '',
     description:''
   };
 
-  // members & selected attendees
-  members = [
-    { id:1, name:'John Doe',       position:'Chairperson',      email:'john.doe@example.com' },
-    { id:2, name:'Jane Smith',     position:'Vice Chairperson', email:'jane.smith@example.com' },
-    { id:3, name:'Robert Johnson', position:'Secretary',        email:'robert.johnson@example.com' },
-    { id:4, name:'Emily Davis',    position:'Treasurer',        email:'emily.davis@example.com' },
-    { id:5, name:'Michael Wilson', position:'Board Member',     email:'michael.wilson@example.com' },
-    { id:6, name:'Sarah Thompson', position:'Board Member',     email:'sarah.thompson@example.com' },
-    { id:7, name:'David Martinez', position:'Board Member',     email:'david.martinez@example.com' },
-    { id:8, name:'Jennifer Garcia',position:'Board Member',     email:'jennifer.garcia@example.com' },
-  ];
-  selectedMembers: number[] = [];
+  // ─── Members & Attendees ───
+  members: MemberOption[]     = [];
+  selectedMemberIds: string[] = [];
+  get attendeeOptions() {
+    return this.members.filter(m => this.selectedMemberIds.includes(m.id));
+  }
 
-  // ** Guests **
-  guests: Array<{ id: number; name?: string; email: string }> = [];
-  newGuestName = '';
+  // ─── Guests ───
+  guests: { id: number; name?: string; email: string }[] = [];
+  newGuestName  = '';
   newGuestEmail = '';
   showGuestModal = false;
   private nextGuestId = 1;
 
-  // agenda items
-  agendaItems: Array<{
-    id:number;
-    title:string;
-    presenter:string;
-    duration:number;
-    documents:string[];
-  }> = [];
-
-  // uploaded docs list
-  uploadedDocs = [
-    { name:'previous_minutes.pdf',       size:'1.2 MB', by:'Robert Johnson', uploadedAt:'2025-05-01' },
-    { name:'financial_report_q1_2025.pdf',size:'3.5 MB', by:'Emily Davis',    uploadedAt:'2025-05-05' },
-    { name:'budget_comparison.xlsx',     size:'0.8 MB', by:'Emily Davis',    uploadedAt:'2025-05-05' },
-    { name:'strategic_plan_update.pptx', size:'5.2 MB', by:'Jane Smith',     uploadedAt:'2025-05-08' },
-    { name:'project_proposals.pdf',      size:'2.7 MB', by:'David Martinez', uploadedAt:'2025-05-10' },
-  ];
-
-  // durations dropdown
+  // ─── Agenda items ───
+  agendaItems: AgendaItemForm[] = [];
   durations = [5,10,15,20,30,45,60];
 
+  // ─── Session‐level documents ───
+  sessionFiles: any[] = [];        // existing metadata
+  newSessionFiles: File[] = [];    // newly selected PDFs
+
+  // ─── Busy state ───
+  uploading = false;
+
   constructor(
-    private route: ActivatedRoute,
-    private router: Router
+    private route:      ActivatedRoute,
+    private router:     Router,
+    private sessionSvc: SessionService,
+    private memberSvc:  MemberService,
   ) {}
 
   ngOnInit(): void {
-    // grab the :id
     this.sessionId = this.route.snapshot.paramMap.get('id')!;
-
-    // if creating new, redirect
-    if (this.sessionId === 'new') {
+    if (!this.sessionId || this.sessionId === 'new') {
       this.router.navigate(['/sessions','new']);
       return;
     }
 
-    // simulate API fetch
-    setTimeout(() => {
-      // mock existing session #1
+    // first load members, then session
+    this.memberSvc.list().pipe(
+      switchMap(members => {
+        this.members = members.map(m => ({
+          id:       m._id!,
+          name:     `${m.firstName} ${m.lastName}`,
+          position: m.position,
+          email:    m.email
+        }));
+        return this.sessionSvc.getSession(this.sessionId);
+      }),
+      catchError(err => {
+        console.error(err);
+        this.router.navigate(['/sessions']);
+        return of(null);
+      })
+    ).subscribe(sess => {
+      if (!sess) return;
+      // --- Details ---
       this.sessionData = {
-        number:     '001',
-        type:       'ordinary',
-        time:       '10:00',
-        modality:   'in-person',
-        location:   'Board Room A, Main Building',
-        description:'Regular monthly board meeting to discuss ongoing projects and financial updates.'
+        number:     sess.number,
+        type:       sess.type,
+        time:       sess.time,
+        modality:   (sess as any).modality || 'In Person',
+        location:   sess.location,
+        description:sess.description || ''
       };
-      this.date = '2025-05-15';
-      this.selectedMembers = this.members.map(m => m.id);
-      this.agendaItems = [
-        { id:1, title:'Approval of Previous Minutes', presenter:'John Doe', duration:10, documents:['previous_minutes.pdf'] },
-        { id:2, title:'Financial Report Q1 2025',     presenter:'Emily Davis', duration:20, documents:['financial_report_q1_2025.pdf','budget_comparison.xlsx'] },
-        { id:3, title:'Strategic Plan Update',        presenter:'Jane Smith', duration:30, documents:['strategic_plan_update.pptx'] },
-        { id:4, title:'New Project Proposals',        presenter:'David Martinez', duration:20, documents:['project_proposals.pdf'] },
-        { id:5, title:'Any Other Business',           presenter:'John Doe', duration:10, documents:[] },
-      ];
+      this.date = sess.date.slice(0,10);
+
+      // --- Attendees ---
+      this.selectedMemberIds = (sess.attendees || [])
+        .map(a => this.members.find(m => m.email === a.email)?.id)
+        .filter(Boolean) as string[];
+
+      // --- Guests ---
+      this.guests = sess.guests || [];
+      this.nextGuestId = this.guests.length + 1;
+
+      // --- Agenda ---
+      this.agendaItems = (sess.agenda || []).map(ai => ({
+        id:        ai.order,
+        title:     ai.title,
+        presenter: ai.presenter,
+        duration:  ai.duration,
+        documents: ai.documents || [],
+        files:     []
+      }));
+
+      // --- Documents ---
+      this.sessionFiles = (sess as any).documents || [];
       this.isLoading = false;
-    }, 300);
-  }
-
-  // Tab nav helper
-  isTab(tab: 'details'|'attendees'|'agenda'|'documents'): boolean {
-    return this.activeTab === tab;
-  }
-
-  // Attendees
-  selectAll(): void {
-    this.selectedMembers = this.members.map(m => m.id);
-  }
-  deselectAll(): void {
-    this.selectedMembers = [];
-  }
-  toggleMember(id: number): void {
-    const idx = this.selectedMembers.indexOf(id);
-    if (idx > -1) {
-      this.selectedMembers.splice(idx, 1);
-    } else {
-      this.selectedMembers.push(id);
-    }
-    // reassign to trigger change detection
-    this.selectedMembers = [...this.selectedMembers];
-  }
-
-  // ** Guest helpers **
-  openGuestModal(): void {
-    this.showGuestModal = true;
-  }
-  closeGuestModal(): void {
-    this.showGuestModal = false;
-    this.newGuestName = '';
-    this.newGuestEmail = '';
-  }
-  addGuest(): void {
-    if (!this.newGuestEmail.trim()) return;
-    this.guests.push({
-      id: this.nextGuestId++,
-      name: this.newGuestName.trim(),
-      email: this.newGuestEmail.trim()
     });
+  }
+
+  // ─── Tab helpers & Guests ───
+  isTab(tab: string) { return this.activeTab === tab; }
+  selectAll()   { this.selectedMemberIds = this.members.map(m=>m.id); }
+  deselectAll() { this.selectedMemberIds = []; }
+  toggleMember(id: string) {
+    this.selectedMemberIds = this.selectedMemberIds.includes(id)
+      ? this.selectedMemberIds.filter(x=>x!==id)
+      : [...this.selectedMemberIds,id];
+  }
+  openGuestModal()  { this.showGuestModal=true; }
+  closeGuestModal() { this.showGuestModal=false; this.newGuestName=''; this.newGuestEmail=''; }
+  addGuest() {
+    if (!this.newGuestEmail.trim()) return;
+    this.guests.push({ id: this.nextGuestId++, name: this.newGuestName.trim(), email: this.newGuestEmail.trim() });
     this.closeGuestModal();
   }
-  removeGuest(id: number): void {
-    this.guests = this.guests.filter(g => g.id !== id);
+  removeGuest(id:number) { this.guests = this.guests.filter(g => g.id !== id); }
+
+  // ─── Agenda handlers ───
+  addAgendaItem() {
+    const next = this.agendaItems.length
+      ? Math.max(...this.agendaItems.map(i=>i.id)) + 1
+      : 1;
+    this.agendaItems.push({ id: next, title: '', presenter: '', duration: 15, documents: [], files: [] });
+  }
+  removeAgendaItem(id:number) {
+    this.agendaItems = this.agendaItems.filter(i=>i.id!==id);
+  }
+  removeAgendaItemDoc(itemId:number, idx:number) {
+    const item = this.agendaItems.find(i=>i.id===itemId);
+    if (!item) return;
+    if (item.documents?.length) item.documents.splice(idx,1);
+    if (item.files?.length)     item.files.splice(idx,1);
   }
 
-  // Agenda items
-  addAgendaItem(): void {
-    const newId = this.agendaItems.length
-      ? Math.max(...this.agendaItems.map(i => i.id)) + 1
-      : 1;
-    this.agendaItems.push({ id:newId, title:'', presenter:'', duration:15, documents:[] });
-  }
-  removeAgendaItem(id: number): void {
-    this.agendaItems = this.agendaItems.filter(i => i.id !== id);
-  }
-  updateAgendaItem(
-    id: number,
-    field: 'title'|'presenter'|'duration'|'documents',
-    value: any
-  ): void {
+  // <—— **NEW**: same as in your session-new component —>
+  updateAgendaItem(id: number, field: keyof AgendaItemForm, value: any) {
     this.agendaItems = this.agendaItems.map(i =>
       i.id === id ? { ...i, [field]: value } : i
     );
   }
-  removeAgendaItemDoc(itemId: number, docIndex: number): void {
+
+  private addFilesToAgendaItem(itemId:number, files:File[]){
+    const idx = this.agendaItems.findIndex(i=>i.id===itemId);
+    if (idx === -1) return;
+    this.agendaItems[idx].files = [...(this.agendaItems[idx].files||[]), ...files];
+  }
+  onAgendaFilesSelected(evt:Event, itemId:number) {
+    const inp = evt.target as HTMLInputElement;
+    if (!inp.files) return;
+    this.addFilesToAgendaItem(itemId, Array.from(inp.files).filter(f=>f.type==='application/pdf'));
+  }
+  onAgendaDragOver(evt:DragEvent){ evt.preventDefault(); }
+  onAgendaFilesDropped(evt:DragEvent, itemId:number){
+    evt.preventDefault();
+    if (!evt.dataTransfer?.files) return;
+    this.addFilesToAgendaItem(itemId, Array.from(evt.dataTransfer.files).filter(f=>f.type==='application/pdf'));
+  }
+
+  // <—— **NEW**: remove only the newly-added file from an agenda item —>
+  removeFile(itemId: number, fileIndex: number) {
     const item = this.agendaItems.find(i => i.id === itemId);
-    if (!item) return;
-    const docs = item.documents.filter((_, idx) => idx !== docIndex);
-    this.updateAgendaItem(itemId, 'documents', docs);
+    if (!item || !item.files) return;
+    item.files.splice(fileIndex, 1);
   }
 
-  // Supporting docs tab
-  removeUploadedDoc(index: number): void {
-    this.uploadedDocs.splice(index, 1);
+  // ─── Top-level documents ───
+  onDocsDragOver(evt:DragEvent){ evt.preventDefault(); }
+  onDocsDropped(evt:DragEvent){
+    evt.preventDefault();
+    if (!evt.dataTransfer?.files) return;
+    Array.from(evt.dataTransfer.files)
+      .filter(f=>f.type==='application/pdf')
+      .forEach(f=>this.newSessionFiles.push(f));
+  }
+  onDocsSelected(evt:Event){
+    const inp = evt.target as HTMLInputElement;
+    if (!inp.files) return;
+    Array.from(inp.files)
+      .filter(f=>f.type==='application/pdf')
+      .forEach(f=>this.newSessionFiles.push(f));
+  }
+  removeDocument(idx:number) {
+    if (idx < this.sessionFiles.length) {
+      this.sessionFiles.splice(idx,1);
+    } else {
+      this.newSessionFiles.splice(idx - this.sessionFiles.length, 1);
+    }
   }
 
-  // Save / Save & Send
-  handleSubmit(): void {
-    console.log('Saving session', {
-      id: this.sessionId,
-      ...this.sessionData,
-      date: this.date,
-      attendees: this.selectedMembers,
-      guests: this.guests,
-      agenda: this.agendaItems,
-      documents: this.uploadedDocs
+  // ─── Save ───
+  private buildAttendeesPayload() {
+    return this.selectedMemberIds.map(id => {
+      const m = this.members.find(x=>x.id===id)!;
+      return { name: m.name, email: m.email, status:'Confirmed', role:m.position };
     });
-    this.router.navigate(['/sessions', this.sessionId]);
   }
-  handleSaveAndSend(): void {
-    console.log('Saving & sending notice for session', this.sessionId);
-    this.router.navigate(['/sessions', this.sessionId]);
+
+  handleSubmit(){
+    if (!this.date || !this.selectedMemberIds.length) return console.error('Missing fields');
+    this.uploading = true;
+
+    const agendaPayload = this.agendaItems.map(i => {
+      // keep all of the existing documents...
+      const existingDocs = i.documents || [];
+
+      // ...and append any newly-selected files as metadata
+      const newDocsMeta = (i.files || []).map(f => ({
+        fileName:   f.name,
+        fileType:   f.type,
+        fileSize:   f.size,
+        filePath:   f.name,       // backend will rename on upload
+        uploadDate: new Date()
+      }));
+
+      return {
+        order:         i.id,
+        title:         i.title || 'Untitled',
+        presenter:     i.presenter || 'Unknown',
+        duration:      i.duration,
+        estimatedTime: i.duration,
+        documents:     [...existingDocs, ...newDocsMeta]
+      };
+    });
+    const docsPayload = [
+      ...this.sessionFiles,
+      ...this.newSessionFiles.map(f=>({
+        fileName:f.name,fileType:f.type,fileSize:f.size,
+        filePath:f.name,uploadDate:new Date()
+      }))
+    ];
+    const payload: any = {
+      ...this.sessionData,
+      date:      this.date,
+      attendees: this.buildAttendeesPayload(),
+      guests:    this.guests,
+      agenda:    agendaPayload,
+      documents: docsPayload
+    };
+
+    this.sessionSvc.updateSession(this.sessionId, payload).pipe(
+      switchMap(updated => {
+        const uploads = this.agendaItems
+          .filter(i=>i.files?.length)
+          .map(i =>
+            this.sessionSvc.uploadAgendaDocuments(this.sessionId,i.id,i.files!)
+              .pipe(catchError(()=>of(null)))
+          );
+        return uploads.length
+          ? forkJoin(uploads).pipe(mapTo(updated))
+          : of(updated);
+      }),
+      catchError(err => {
+        console.error(err);
+        this.uploading = false;
+        return of(null);
+      })
+    ).subscribe(res => {
+      this.uploading = false;
+      if (res) {
+        this.router.navigate(['/sessions']);
+      }
+    });
+  }
+
+  handleSaveAndSend(){
+    this.handleSubmit();
+    // add notice-sending here
   }
 }

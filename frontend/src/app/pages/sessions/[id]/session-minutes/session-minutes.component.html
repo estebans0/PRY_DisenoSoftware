@@ -23,7 +23,9 @@
         </span>
       </div>
       <p class="text-gray-500">
-        {{ session.date || 'No date' }} • {{ session.time || '--' }} to {{ session.endTime || '--' }}
+        {{ session.date  | date:'yyyy-MM-dd' }}  •
+        {{ session.startTime  | date:'HH:mm'     }} to
+        {{ session.endTime    | date:'HH:mm'     }}
       </p>
     </div>
     <div class="flex gap-2">
@@ -68,7 +70,7 @@
         <h2 class="text-xl">{{ organizationName }}</h2>
         <p>Session #{{ session.number }} {{ session.type ? '– ' + session.type : '' }}</p>
         <p>{{ session.date | date:'MMMM d, y' }}</p>
-        <p>{{ session.time }} to {{ session.endTime || 'End' }}</p>
+        <p>{{ session.startTime | date:'HH:mm' }} to {{ session.endTime | date:'HH:mm' }}</p>
         <p>
           <lucide-icon name="MapPin" class="inline h-4 w-4"></lucide-icon>
           {{ session.location }} ({{ session.modality }})
@@ -82,7 +84,7 @@
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div>
             <p class="font-medium">Date and Time:</p>
-            <p>{{ session.date | date:'MMMM d, y' }}, {{ session.time }} to {{ session.endTime || 'TBD' }}</p>
+            <p>{{ session.date | date:'MMMM d, y' }}, {{ session.startTime | date:'HH:mm' }} to {{ session.endTime | date:'HH:mm' }}</p>
           </div>
           <div>
             <p class="font-medium">Location:</p>

@@ -1,10 +1,33 @@
-import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+// src/app/pages/sessions/new/session-new.component.ts
+import { Component, OnInit } from '@angular/core';
+import { CommonModule }      from '@angular/common';
+import { FormsModule }       from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
-import { LucideAngularModule } from 'lucide-angular';
-import { SessionService } from '../../../services/session.service';
-import { MemberService }  from '../../../services/member.service';
+import { LucideAngularModule }  from 'lucide-angular';
+import { SessionService }       from '../../../services/session.service';
+import { MemberService }        from '../../../services/member.service';
+import { AuthService }          from '../../../services/auth.service';
+import { forkJoin, of } from 'rxjs';
+import { switchMap, mapTo, catchError } from 'rxjs/operators';
+import { AgendaItemFactory } from '../../../models/agenda-item.model';
+
+interface MemberOption {
+  id:       string;
+  name:     string;
+  position: string;
+  email:    string;
+}
+
+interface AgendaItemForm {
+  id:        number;
+  title:     string;
+  presenter: string;
+  duration:  number;
+  tipoPunto: string;
+  description: string;
+  documents: string[];     // unused here
+  files:     File[];       // locally selected PDFs
+}
 
 @Component({
   selector: 'app-session-new',
@@ -18,74 +41,91 @@ import { MemberService }  from '../../../services/member.service';
   templateUrl: './session-new.component.html',
   styleUrls: ['./session-new.component.scss']
 })
-export class SessionNewComponent {
+export class SessionNewComponent implements OnInit {
+  // --- Tabs ---
   activeTab: 'details'|'attendees'|'agenda'|'documents' = 'details';
-  date?: string;
-  members: any[] = [];  // Lista de miembros desde la API
-  selectedMembers: number[] = [];
 
-  // form state
+  tipoPuntoOptions = ['Aprobaciones', 'informativa', 'fondo estrategia y desarrollo', 'varios'];
+
+  // --- Members & Attendees ---
+  members: MemberOption[]     = [];
+  selectedMemberIds: string[] = [];
+
+  // --- Form state ---
+  date?: string;
   sessionData = {
-    number: '',
-    type: 'ordinary',
-    time: '10:00',
-    modality: 'in-person',
-    location: '',
+    number:      '',
+    type:        'ordinary',
+    time:        '10:00',
+    modality:    'in-person',   // <-- now will be saved
+    location:    '',
     description: '',
   };
 
-  // Hay que adaptar esto para que haga un fetch a la API y obtenga los miembros
-  ngOnInit() {
-    this.memberSvc.list().subscribe({
-      next: (data) => {
-        this.members = data.map(member => ({
-          name: member.firstName || 'Unknown',
-          position: member.position || 'Not specified',
-          email: member.email || 'No email'
-        }));
-        this.selectedMembers = this.members.map(m => m.name); // Seleccionar automáticamente
-      },
-      error: (err) => console.error('Error obteniendo miembros:', err)
-    });
-  }
-
-  // ** Guest state **
-  guests: Array<{ id: number; name?: string; email: string }> = [];
-  newGuestName = '';
+  // --- Guests ---
+  guests: { id: number; name?: string; email: string }[] = [];
+  newGuestName  = '';
   newGuestEmail = '';
   showGuestModal = false;
   private nextGuestId = 1;
 
-  // agenda items
-  agendaItems: Array<{
-    id: number;
-    title: string;
-    presenter: string;
-    duration: number;
-    documents: string[];
-  }> = [
-    { id: 1, title: '', presenter: '', duration: 15, documents: [] }
+  // --- Agenda items ---
+  agendaItems: AgendaItemForm[] = [
+    { 
+      id: 1, 
+      title: '', 
+      presenter: '', 
+      duration: 15, 
+      tipoPunto: 'informativa', 
+      description: '', 
+      documents: [], 
+      files: [] 
+    }
   ];
-
-  // helper arrays
   durations = [5,10,15,20,30,45,60];
 
-  // tab helper
+  // --- Session‐level documents ---
+  sessionFiles: File[] = [];
+
+  // disable while uploading
+  uploading = false;
+
+  constructor(
+    private router:     Router,
+    private sessionSvc: SessionService,
+    private memberSvc:  MemberService,
+    private auth:       AuthService,
+  ) {}
+
+  ngOnInit() {
+    this.memberSvc.list().subscribe({
+      next: data => {
+        this.members = data.map(m => ({
+          id:       m._id,
+          name:     `${m.firstName} ${m.lastName}`,
+          position: m.position,
+          email:    m.email
+        }));
+        this.selectedMemberIds = [];
+      },
+      error: err => console.error('Error fetching members', err)
+    });
+  }
+
+  // --- Tab helpers ---
   isTab(tab: string) { return this.activeTab === tab; }
 
-  // attendees helpers
-  selectAll()   { this.selectedMembers = this.members.map(m => m.id); }
-  deselectAll() { this.selectedMembers = []; }
-  toggleMember(id: number) {
-    this.selectedMembers = this.selectedMembers.includes(id)
-      ? this.selectedMembers.filter(x => x !== id)
-      : [...this.selectedMembers, id];
+  // --- Attendee selection ---
+  selectAll()   { this.selectedMemberIds = this.members.map(m => m.id); }
+  deselectAll() { this.selectedMemberIds = []; }
+  toggleMember(id: string) {
+    this.selectedMemberIds = this.selectedMemberIds.includes(id)
+      ? this.selectedMemberIds.filter(x => x !== id)
+      : [...this.selectedMemberIds, id];
   }
 
-  // ** Guest helpers **
-  openGuestModal() {
-    this.showGuestModal = true;
-  }
+  // --- Guest modal ---
+  openGuestModal()  { this.showGuestModal = true; }
   closeGuestModal() {
     this.showGuestModal = false;
     this.newGuestName = '';
@@ -94,8 +134,8 @@ export class SessionNewComponent {
   addGuest() {
     if (!this.newGuestEmail.trim()) return;
     this.guests.push({
-      id: this.nextGuestId++,
-      name: this.newGuestName.trim(),
+      id:    this.nextGuestId++,
+      name:  this.newGuestName.trim(),
       email: this.newGuestEmail.trim()
     });
     this.closeGuestModal();
@@ -104,81 +144,216 @@ export class SessionNewComponent {
     this.guests = this.guests.filter(g => g.id !== id);
   }
 
-  // agenda helpers
+  // --- Agenda helpers ---
+  /** 
+   * Only those members that were checked in the Attendees tab 
+   */
+  get attendeeOptions(): MemberOption[] {
+    // Start with selected members
+    const memberOptions = this.members
+      .filter(m => this.selectedMemberIds.includes(m.id));
+    
+    // Add guests with proper formatting
+    const guestOptions = this.guests.map(g => ({
+      id: `guest-${g.id}`,
+      name: g.name || `Guest (${g.email})`,
+      position: 'Guest',
+      email: g.email
+    }));
+    
+    // Return combined list
+    return [...memberOptions, ...guestOptions];
+  }
+  
   addAgendaItem() {
     const nextId = this.agendaItems.length
       ? Math.max(...this.agendaItems.map(i => i.id)) + 1
       : 1;
-    this.agendaItems.push({
+    
+    const newItem = AgendaItemFactory.create('informativa', {
       id: nextId,
-      title: '',
-      presenter: '',
-      duration: 15,
-      documents: []
+      duration: 15
     });
+    
+    this.agendaItems.push({
+      ...newItem,
+      files: []  // Add the files property for UI handling
+    } as AgendaItemForm);
   }
   removeAgendaItem(id: number) {
     if (this.agendaItems.length > 1) {
       this.agendaItems = this.agendaItems.filter(i => i.id !== id);
     }
   }
-  updateAgendaItem(id: number, field: keyof typeof this.agendaItems[0], value: any) {
-    this.agendaItems = this.agendaItems.map(i =>
-      i.id === id ? { ...i, [field]: value } : i
-    );
+  updateAgendaItem(id: number, field: keyof AgendaItemForm, value: any) {
+    this.agendaItems = this.agendaItems.map(i => {
+      if (i.id === id) {
+        // If changing the item type, use factory to recreate with proper structure
+        if (field === 'tipoPunto') {
+          const updatedItem = AgendaItemFactory.create(value, {
+            ...i,
+            tipoPunto: value
+          });
+          return { ...updatedItem, files: i.files } as AgendaItemForm;
+        } else {
+          // Normal field update
+          return { ...i, [field]: value };
+        }
+      }
+      return i;
+    });
   }
 
-  // final actions
-  constructor(private router: Router, private sessionSvc: SessionService, private memberSvc: MemberService) {}
+  private addFilesToAgendaItem(itemId: number, newFiles: File[]) {
+    const idx = this.agendaItems.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    const existing = this.agendaItems[idx].files || [];
+    this.agendaItems[idx].files = [...existing, ...newFiles];
+  }
+  onAgendaFilesSelected(evt: Event, itemId: number) {
+    const input = evt.target as HTMLInputElement;
+    if (!input.files) return;
+    const files = Array.from(input.files)
+      .filter(f => f.type === 'application/pdf');
+    this.addFilesToAgendaItem(itemId, files);
+  }
+  onAgendaDragOver(evt: DragEvent) {
+    evt.preventDefault();
+  }
+  onAgendaFilesDropped(evt: DragEvent, itemId: number) {
+    evt.preventDefault();
+    if (!evt.dataTransfer?.files) return;
+    const files = Array.from(evt.dataTransfer.files)
+      .filter(f => f.type === 'application/pdf');
+    this.addFilesToAgendaItem(itemId, files);
+  }
+  removeFile(itemId: number, fileIndex: number) {
+    const idx = this.agendaItems.findIndex(i => i.id === itemId);
+    if (idx === -1) return;
+    this.agendaItems[idx].files!.splice(fileIndex, 1);
+  }
+
+  // --- Session‐level documents tab helpers ---
+  onDocsDragOver(evt: DragEvent) {
+    evt.preventDefault();
+  }
+  onDocsDropped(evt: DragEvent) {
+    evt.preventDefault();
+    if (!evt.dataTransfer?.files) return;
+    Array.from(evt.dataTransfer.files)
+      .filter(f => f.type === 'application/pdf')
+      .forEach(f => this.sessionFiles.push(f));
+  }
+  onDocsSelected(evt: Event) {
+    const input = evt.target as HTMLInputElement;
+    if (!input.files) return;
+    Array.from(input.files)
+      .filter(f => f.type === 'application/pdf')
+      .forEach(f => this.sessionFiles.push(f));
+  }
+  removeDocument(index: number) {
+    this.sessionFiles.splice(index, 1);
+  }
+
+  // --- Final submission ---
+
+  private buildAttendeesPayload() {
+    return this.selectedMemberIds.map(id => {
+      const m = this.members.find(x => x.id === id)!;
+      return {
+        name:   m.name,
+        email:  m.email,
+        status: 'Confirmed',
+        role:   m.position
+      };
+    });
+  }
+
   handleSubmit() {
-  const newSession = {
-    ...this.sessionData,
-    date: this.date,
-    attendees: this.selectedMembers,
-    guests: this.guests,
-    agenda: this.agendaItems.map(item => ({
-      Orden: item.id,  // Asegurar orden
-      Titulo: item.title || 'Sin título',  // Evitar undefined
-      Presenter: item.presenter || 'Desconocido', // Evitar undefined
-      Duration: item.duration ?? 15, // Valor por defecto
-      EstimatedTime: item.duration ?? 15, // Asignar tiempo estimado
-    }))
-  };
+    if (!this.date || !this.selectedMemberIds.length) {
+      console.error('Date and at least one attendee are required');
+      return;
+    }
 
-  // Validar antes de enviar
-  if (!newSession.date || !newSession.attendees.length) {
-    console.error('Error: La sesión requiere una fecha y asistentes.');
-    return;
+    this.uploading = true;
+
+    // 1) map each agenda item, *including* its PDF‐metadata
+    const agendaPayload = this.agendaItems.map(i => ({
+      order:         i.id,
+      title:         i.title     || 'Untitled',
+      presenter:     i.presenter || 'Unknown',
+      duration:      i.duration,
+      tipoPunto:     i.tipoPunto || 'informativa',
+      description:   i.description || '',
+      estimatedTime: i.duration,
+      documents:     (i.files || []).map(f => ({
+        fileName:   f.name,
+        fileType:   f.type,
+        fileSize:   f.size,
+        filePath:   f.name,           // back‐end will rename on upload
+        uploadDate: new Date()
+      }))
+    }));
+
+    // 2) top‐level session documents payload
+    const sessionDocs = this.sessionFiles.map(f => ({
+      fileName:   f.name,
+      fileType:   f.type,
+      fileSize:   f.size,
+      filePath:   f.name,
+      uploadDate: new Date()
+    }));
+
+    // 3) build the full payload
+    const payload: any = {
+      ...this.sessionData,    // includes modality now
+      date:      this.date,
+      attendees: this.buildAttendeesPayload(),
+      guests:    this.guests,
+      // stick agenda + docs in right shape:
+      agenda:    agendaPayload,
+      documents: sessionDocs
+    };
+
+    // 4) attach createdBy
+    const me = this.auth.getCurrentUser();
+    if (me && me._id && me.firstName && me.lastName) {
+      payload.createdBy = {
+        _id:  me._id,
+        name: `${me.firstName} ${me.lastName}`
+      };
+    }
+
+    // 5) POST → then optionally upload raw PDFs
+    this.sessionSvc.createSession(payload).pipe(
+      switchMap(created => {
+        const sessionId = created._id!;
+        // agenda PDFs
+        const uploads = this.agendaItems
+          .filter(i => i.files && i.files.length)
+          .map(i =>
+            this.sessionSvc
+              .uploadAgendaDocuments(sessionId, i.id, i.files!)
+              .pipe(catchError(() => of(null)))
+          );
+        return uploads.length
+          ? forkJoin(uploads).pipe(mapTo(created))
+          : of(created);
+      }),
+      catchError(err => {
+        console.error(err);
+        this.uploading = false;
+        return of(null);
+      })
+    ).subscribe(result => {
+      this.uploading = false;
+      if (result) {
+        this.router.navigate(['/sessions']);
+      }
+    });
   }
 
-
-  this.sessionSvc.createSession(newSession).subscribe({
-    next: () => this.router.navigate(['/sessions']),
-    error: (err) => console.error('Error creando sesión:', err)
-  });
-}
-
-handleSaveAndSend() {
-  const newSession = {
-    ...this.sessionData,
-    date: this.date,
-    attendees: this.selectedMembers,
-    guests: this.guests,
-    agenda: this.agendaItems.map(item => ({
-      Orden: item.id,
-      Titulo: item.title || 'Sin título',
-      Presenter: item.presenter || 'Desconocido',
-      Duration: item.duration ?? 15,
-      EstimatedTime: item.duration ?? 15,
-    }))
-  };
-
-  this.sessionSvc.createSession(newSession).subscribe({
-    next: (createdSession) => {
-      console.log('Sesión creada, enviando notificación...');
-      this.router.navigate(['/sessions']);
-    },
-    error: (err) => console.error('Error creando sesión:', err)
-  });
-}
+  handleSaveAndSend() {
+    this.handleSubmit();
+  }
 }
