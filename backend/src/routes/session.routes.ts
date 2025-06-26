@@ -40,4 +40,11 @@ router.post(
   SessionController.uploadDocuments[1]    // mount the async handler
 );
 
+//routes visitor
+router.get('/presenter/:presenterEmail', SessionController.getSessionsByPresenter);
+router.get('/responsible/:memberEmail', SessionController.getResponsiblePoints);
+router.get('/absent/:memberEmail', SessionController.getAbsentSessions);
+router.get('/date-range', SessionController.getSessionsInDateRange);
+router.get('/details/:id', SessionController.getSessionDetailsById);
+router.get('/filter-minutes/:memberEmail', SessionController.getFilteredMinutes);
 export default router;
