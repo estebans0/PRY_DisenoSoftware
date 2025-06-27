@@ -1,4 +1,4 @@
-import { Schema, model, Document, ObjectId, Types } from 'mongoose';
+import { Schema, model, Document, ObjectId, Types, InferSchemaType } from 'mongoose';
 import { ISessionVisitor, IVisitableSession } from '../Visitor/visitor.interfaces';
 
 // Action interface
@@ -186,3 +186,9 @@ SessionSchema.methods.accept = async function(visitor: ISessionVisitor): Promise
 };
 
 export const Session = model<ISession>('Session', SessionSchema);
+export {
+    
+    AgendaItemSchema,
+    
+};
+export type AgendaItemType = InferSchemaType<typeof AgendaItemSchema>;
