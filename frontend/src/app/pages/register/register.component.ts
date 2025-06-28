@@ -29,7 +29,7 @@ export class RegisterComponent {
     password: '',
     confirmPassword: '',
     position: '',
-    tipoUsuario: 'USUARIO', // Default to 'USUARIO'
+    tipoUsuario: 'JDMEMBER', // Default to 'JDMEMBER'
   };
   showPassword = false;
   showConfirm  = false;
