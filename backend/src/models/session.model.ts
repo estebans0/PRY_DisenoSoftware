@@ -68,7 +68,7 @@ const AgendaItemSchema = new Schema({
   description:   { type: String, default: '' },
   presenter:     { type: String, required: true },
   notes:         { type: String, default: '' },
-  tipoPunto:     { type: String, enum: ['Aprobaciones','informativa', ' fondo estrategia y desarrollo', 'varios'], default: 'Aprobacion' }, //actualizado segun especificacion
+  tipoPunto:     { type: String, enum: ['Aprobaciones','informativa', 'fondo estrategia y desarrollo', 'varios'], default: 'Aprobaciones' }, //actualizado segun especificacion
   pro:           [AttendeeSchema],
   against:       [AttendeeSchema],
   abstained:     [AttendeeSchema],
