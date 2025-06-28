@@ -4,6 +4,7 @@ import { CommonModule }             from '@angular/common';
 import { Router, NavigationEnd }    from '@angular/router';
 import { LucideAngularModule }      from 'lucide-angular';
 import { RouterModule }             from '@angular/router';
+import { AuthService }              from '../../services/auth.service';
 
 @Component({
   standalone: true,
@@ -21,7 +22,7 @@ export class HeaderComponent {
   dark = false;
   profileMenu = false;
 
-  constructor(private router: Router) {
+  constructor(private router: Router, private authService: AuthService) {
     // public header only on '/', '/login', '/register'
     this.router.events.subscribe(evt => {
       if (evt instanceof NavigationEnd) {
@@ -48,9 +49,30 @@ export class HeaderComponent {
 
   /** Log out: clear token + redirect to /login */
   logout() {
-    // clear any auth storage (e.g. JWT)
-    localStorage.removeItem('token');
+    this.authService.logout();
     this.profileMenu = false;
-    this.router.navigate(['/login']);
+  }
+
+  /** Get current user info */
+  get currentUser() {
+    return this.authService.getCurrentUser();
+  }
+
+  /** Get display name for current user */
+  get userName(): string {
+    const user = this.currentUser;
+    if (user) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return 'User';
+  }
+
+  /** Get user role for display */
+  get userRole(): string {
+    const user = this.currentUser;
+    if (user) {
+      return user.tipoUsuario === 'ADMINISTRADOR' ? 'Administrator' : 'Member';
+    }
+    return 'Guest';
   }
 }

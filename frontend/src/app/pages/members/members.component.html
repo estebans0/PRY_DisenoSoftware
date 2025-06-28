@@ -26,13 +26,13 @@
       <!-- Search + Export -->
       <div class="flex items-center gap-2">
         <div class="relative flex-1">
-          <lucide-icon name="Search"
-            class="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400"></lucide-icon>
+          <lucide-icon name="search"
+            class="absolute left-1.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400"></lucide-icon>
           <input
             type="text"
             placeholder="Search members..."
             [(ngModel)]="searchQuery"
-            class="w-full pl-8 border rounded px-3 py-2"
+            class="w-full pl-10 pr-3 py-2 border rounded"
           />
         </div>
         <button class="p-2 border rounded text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -49,7 +49,6 @@
               <th class="px-4 py-2">Name</th>
               <th class="px-4 py-2">Position</th>
               <th class="px-4 py-2">Email</th>
-              <th class="px-4 py-2">Role</th>
               <th class="px-4 py-2">Status</th>
               <th class="px-4 py-2">Actions</th>
             </tr>
@@ -61,7 +60,6 @@
               </td>
               <td class="px-4 py-2">{{ m.position }}</td>
               <td class="px-4 py-2">{{ m.email }}</td>
-              <td class="px-4 py-2">{{ m.position }}</td>
               <td class="px-4 py-2">
                 <span
                   class="inline-block px-2 py-0.5 text-xs rounded-full"
@@ -77,13 +75,13 @@
                 <div class="flex gap-2">
                   <button
                     class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    (click)="openEdit(m._id)"
+                    (click)="openEdit(m.email)"
                   >
                     <lucide-icon name="Edit" class="h-4 w-4 text-blue-600"></lucide-icon>
                   </button>
                   <button
                     class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                    (click)="openDelete(m._id)"
+                    (click)="openDelete(m.email)"
                   >
                     <lucide-icon name="Trash2" class="h-4 w-4 text-red-500"></lucide-icon>
                   </button>
@@ -91,7 +89,7 @@
               </td>
             </tr>
             <tr *ngIf="filteredMembers().length === 0">
-              <td colspan="6" class="px-4 py-6 text-center text-gray-500">
+              <td colspan="5" class="px-4 py-6 text-center text-gray-500">
                 No members found.
               </td>
             </tr>
@@ -121,10 +119,10 @@
   >
     <div class="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-6 space-y-4">
       <h3 class="text-lg font-semibold dark:text-gray-100">
-        {{ selectedId ? 'Edit Member' : 'Add New Member' }}
+        {{ selectedEmail ? 'Edit Member' : 'Add New Member' }}
       </h3>
       <p class="text-sm text-gray-500 dark:text-gray-400">
-        {{ selectedId
+        {{ selectedEmail
            ? 'Update member details (leave password blank to keep unchanged).'
            : 'Fill in all the required information.' }}
       </p>
@@ -152,7 +150,7 @@
             [(ngModel)]="form.email"
           />
         </div>
-        <div *ngIf="!selectedId" class="grid grid-cols-4 items-center gap-2">
+        <div *ngIf="!selectedEmail" class="grid grid-cols-4 items-center gap-2">
           <label class="col-span-1 text-right text-sm dark:text-gray-100">Password</label>
           <input
             type="password"
@@ -174,14 +172,15 @@
             [(ngModel)]="form.organization"
           />
         </div>
-        <div class="grid grid-cols-4 items-center gap-2">
+        <div *ngIf="!selectedEmail" class="grid grid-cols-4 items-center gap-2">
           <label class="col-span-1 text-right text-sm dark:text-gray-100">Role</label>
           <select
             class="col-span-3 border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             [(ngModel)]="form.tipoUsuario"
+            [disabled]="true"
           >
-            <option value="ADMINISTRADOR">Admin</option>
-            <option value="USUARIO">User</option>
+            <option value="ADMINISTRADOR">Administrator</option>
+            <option value="JDMEMBER">JD Member</option>
           </select>
         </div>
         <div class="grid grid-cols-4 items-center gap-2">
@@ -208,7 +207,7 @@
           class="px-4 py-2 bg-blue-600 text-white rounded"
           (click)="doSave()"
         >
-          {{ selectedId ? 'Save Changes' : 'Add Member' }}
+          {{ selectedEmail ? 'Save Changes' : 'Add Member' }}
         </button>
       </div>
     </div>

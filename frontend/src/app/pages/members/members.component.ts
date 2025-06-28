@@ -19,7 +19,7 @@ export class MembersComponent implements OnInit {
   // dialog state
   isAddOpen    = false;
   isDeleteOpen = false;
-  selectedId: string | null = null;
+  selectedEmail: string | null = null;
 
   // form model (for both add & edit)
   form: Partial<Member & { password: string }> = this.emptyForm();
@@ -50,7 +50,7 @@ export class MembersComponent implements OnInit {
       lastName:     '',
       email:        '',
       password:     '',
-      tipoUsuario:  'USUARIO' as const,
+      tipoUsuario:  'JDMEMBER' as const,
       position:     'Unassigned',
       organization: 'Unassigned',
       status:       'Active' as 'Active'|'Inactive'
@@ -59,17 +59,17 @@ export class MembersComponent implements OnInit {
 
   // — Add Member —
   openAdd() {
-    this.selectedId = null;
+    this.selectedEmail = null;
     this.form        = this.emptyForm();
     this.errorMsg    = '';
     this.isAddOpen   = true;
   }
 
   // — Edit Member —
-  openEdit(id: string) {
-    this.selectedId  = id;
+  openEdit(email: string) {
+    this.selectedEmail  = email;
     this.errorMsg    = '';
-    this.svc.get(id).subscribe({
+    this.svc.get(email).subscribe({
       next: user => {
         this.form = {
           firstName:    user.firstName,
@@ -95,20 +95,33 @@ export class MembersComponent implements OnInit {
       this.errorMsg = 'Name and email are required.';
       return;
     }
-    if (!this.selectedId && !this.form.password) {
+    if (!this.selectedEmail && !this.form.password) {
       this.errorMsg = 'Password is required for new user.';
       return;
     }
 
-    if (this.selectedId) {
-      // UPDATE
-      this.svc.update(this.selectedId, this.form).subscribe({
+    if (this.selectedEmail) {
+      // UPDATE - Don't allow role changes
+      const updatePayload = {
+        firstName: this.form.firstName,
+        lastName: this.form.lastName,
+        email: this.form.email,
+        position: this.form.position,
+        organization: this.form.organization,
+        status: this.form.status
+        // Explicitly exclude tipoUsuario from updates
+      };
+      this.svc.update(this.selectedEmail, updatePayload).subscribe({
         next: () => { this.isAddOpen = false; this.reload(); },
         error: e => this.errorMsg = e.error?.message || 'Server error'
       });
     } else {
-      // CREATE
-      this.svc.create(this.form as any).subscribe({
+      // CREATE - Use default role
+      const createPayload = {
+        ...this.form,
+        tipoUsuario: 'JDMEMBER' // Force default role for new users
+      };
+      this.svc.create(createPayload as any).subscribe({
         next: () => { this.isAddOpen = false; this.reload(); },
         error: e => this.errorMsg = e.error?.message || 'Server error'
       });
@@ -116,13 +129,13 @@ export class MembersComponent implements OnInit {
   }
 
   // — Delete Member —
-  openDelete(id: string) {
-    this.selectedId  = id;
+  openDelete(email: string) {
+    this.selectedEmail  = email;
     this.isDeleteOpen = true;
   }
   doDelete() {
-    if (!this.selectedId) return;
-    this.svc.delete(this.selectedId).subscribe({
+    if (!this.selectedEmail) return;
+    this.svc.delete(this.selectedEmail).subscribe({
       next: () => { this.isDeleteOpen = false; this.reload(); },
       error: console.error
     });
