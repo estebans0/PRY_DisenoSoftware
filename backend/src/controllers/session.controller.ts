@@ -1,27 +1,26 @@
 // backend/src/controllers/session.controller.ts
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { Types } from 'mongoose';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
-import { Session } from '../models/session.model'; // Import Session model
-import { SessionAgenda } from '../models/agenda.model';
+import { Session } from '../models/session.model';
 import { SessionQueryService } from '../services/services.visitor';
 
-// Helper for validating ObjectIDs
-const isValidObjectId = (id: string) => ObjectId.isValid(id) && new ObjectId(id).toString() === id;
-const queryService = new SessionQueryService(); // servicio del visitor
-
-// ——— Setup ———
+// —── Setup Multer upload storage ───────────────────────────────────────────────
 const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 export const upload = multer({ storage: multer.memoryStorage() });
 
-// Validate a MongoDB ObjectId
+// —── Helper for validating ObjectIDs ──────────────────────────────────────────
+const { ObjectId } = Types;
 function isValidObjectId(id: string): boolean {
-  return Types.ObjectId.isValid(id) && new Types.ObjectId(id).toString() === id;
+  return ObjectId.isValid(id) && new ObjectId(id).toString() === id;
 }
+
+// instantiate your visitor-based query service
+const queryService = new SessionQueryService();
 
 // ——— CRUD ———
 
