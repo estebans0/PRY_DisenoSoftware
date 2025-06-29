@@ -16,6 +16,7 @@ import { SessionStartComponent } from './pages/sessions/[id]/session-start/sessi
 import { SessionNotifyComponent } from './pages/sessions/[id]/session-notify/session-notify.component';
 import { SessionDetailComponent } from './pages/sessions/[id]/session-detail/session-detail.component';
 import { SessionMinutesComponent } from './pages/sessions/[id]/session-minutes/session-minutes.component';
+import { SessionVisitorListComponent } from './pages/sessions/session-view/session-visitor-list.component';
 
 export const routes: Routes = [
   { path: '',         component: HomeComponent },
@@ -26,6 +27,7 @@ export const routes: Routes = [
   { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [AuthGuard] },
   { path: 'profile',   component: ProfileComponent,   canActivate: [AuthGuard] },
+  { path: 'session-reports', component: SessionVisitorListComponent, canActivate: [AuthGuard] }, // Asegurar que solo miembros de junta puedan acceder , data: { roles: ['board_member']
   { path: 'sessions',  component: SessionListComponent, canActivate: [AuthGuard] },
 
   { path: 'sessions/new',      component: SessionNewComponent, canActivate: [AuthGuard] },
@@ -35,5 +37,6 @@ export const routes: Routes = [
   { path: 'sessions/:id/minutes', component: SessionMinutesComponent, canActivate: [AuthGuard] },
   { path: 'sessions/:id/notify',  component: SessionNotifyComponent,  canActivate: [AuthGuard] },
 
+  
   { path: '**', redirectTo: '' },
 ];

@@ -1,0 +1,173 @@
+<!-- src/app/pages/sessions/session-view/session-visitor-list.component.html -->
+<div class="container mx-auto p-4">
+  <!-- Header -->
+  <div class="flex items-center justify-between mb-6">
+    <h1 class="text-2xl font-bold">Mis Reportes de Sesiones</h1>
+  </div>
+
+  <!-- Filters -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-4">
+    <div class="flex flex-col sm:flex-row gap-4 items-center">
+      <select
+        [(ngModel)]="viewType"
+        (change)="search()"
+        class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 w-full sm:w-auto"
+      >
+        <option value="presenter">Mis puntos como expositor</option>
+        <option value="responsible">Mis puntos como responsable</option>
+        <option value="absent">Sesiones donde estuve ausente</option>
+      </select>
+
+      <input
+        *ngIf="viewType === 'presenter' || viewType === 'absent'"
+        type="email"
+        placeholder="Correo electrónico"
+        [(ngModel)]="emailFilter"
+        (keyup.enter)="search()"
+        class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 w-full sm:w-auto"
+      >
+
+      <input
+        *ngIf="viewType === 'responsible'"
+        type="text"
+        placeholder="Nombre del responsable"
+        [(ngModel)]="nameFilter"
+        (keyup.enter)="search()"
+        class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 w-full sm:w-auto"
+      >
+
+      <button
+        (click)="search()"
+        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center gap-2 w-full sm:w-auto justify-center"
+      >
+        <i-lucide name="search" class="w-4 h-4"></i-lucide>
+        Buscar
+      </button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+    <!-- Loading state -->
+    <div *ngIf="loading" class="p-8 text-center">
+      <div class="animate-pulse flex flex-col items-center gap-2">
+        <i-lucide name="loader" class="w-8 h-8 animate-spin"></i-lucide>
+        <span>Cargando resultados...</span>
+      </div>
+    </div>
+
+    <!-- Presenter Results -->
+    <div *ngIf="!loading && viewType === 'presenter'">
+      <div *ngIf="currentResults.length === 0" class="p-8 text-center text-gray-500">
+        No se encontraron sesiones donde seas expositor.
+      </div>
+
+      <div *ngFor="let session of currentResults" class="border-b dark:border-gray-700 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-lg font-semibold">
+            Sesión #{{ session.number }} - {{ session.date | date:'mediumDate' }}
+          </h2>
+          <div class="flex gap-2">
+            <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(session.status)">
+              {{ session.status }}
+            </span>
+            <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+              {{ getQuorumStatus(session) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Changed this part to use a method instead of inline filter -->
+        <div *ngFor="let item of getPresenterItems(session)" 
+             class="ml-4 pl-4 border-l-2 border-blue-200 dark:border-blue-600 my-3">
+          <h3 class="font-medium">{{ item.order }}. {{ item.title }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Duración: {{ item.duration }} min • Tipo: {{ item.tipoPunto }}
+          </p>
+          
+          <div *ngIf="item.decision" class="mt-1">
+            <p class="text-sm"><span class="font-medium">Resolución:</span> {{ item.decision }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Responsible Points Results -->
+    <div *ngIf="!loading && viewType === 'responsible'">
+      <div *ngIf="currentResults.length === 0" class="p-8 text-center text-gray-500">
+        No se encontraron puntos donde seas responsable.
+      </div>
+
+      <div *ngFor="let result of currentResults" class="border-b dark:border-gray-700 p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h2 class="text-lg font-semibold">
+            Sesión #{{ result.session.number }} - {{ result.session.date | date:'mediumDate' }}
+          </h2>
+          <div class="flex gap-2">
+            <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(result.session.status)">
+              {{ result.session.status }}
+            </span>
+          </div>
+        </div>
+
+        <div *ngFor="let item of result.items" class="ml-4 pl-4 border-l-2 border-green-200 dark:border-green-600 my-3">
+          <h3 class="font-medium">{{ item.order }}. {{ item.title }}</h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            Expositor: {{ item.presenter }}
+          </p>
+          
+          <div *ngIf="item.actions?.length" class="mt-2">
+            <p class="text-sm font-medium">Acciones asignadas:</p>
+            <ul class="list-disc pl-5 text-sm">
+              <li *ngFor="let action of item.actions">
+                {{ action.description }}
+                <span *ngIf="action.dueDate" class="text-xs text-gray-500">
+                  (para {{ action.dueDate | date:'shortDate' }})
+                </span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Absent Sessions Results -->
+    <div *ngIf="!loading && viewType === 'absent'">
+      <div *ngIf="currentResults.length === 0" class="p-8 text-center text-gray-500">
+        No se encontraron sesiones donde hayas estado ausente.
+      </div>
+
+      <table *ngIf="currentResults.length > 0" class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+        <thead class="bg-gray-50 dark:bg-gray-700">
+          <tr>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Sesión</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Estado</th>
+            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Quórum</th>
+          </tr>
+        </thead>
+        <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+          <tr *ngFor="let session of currentResults">
+            <td class="px-4 py-3 whitespace-nowrap">
+              <div class="font-medium">#{{ session.number }}</div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">{{ session.type }}</div>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {{ session.date | date:'mediumDate' }}
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(session.status)">
+                {{ session.status }}
+              </span>
+            </td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <span class="text-xs px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-700">
+                {{ getQuorumStatus(session) }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
