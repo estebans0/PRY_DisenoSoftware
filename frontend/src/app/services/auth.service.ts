@@ -22,7 +22,7 @@ export interface AuthResponse {
     firstName: string;
     lastName: string;
     email: string;
-    tipoUsuario: 'ADMINISTRADOR' | 'USUARIO';
+    tipoUsuario: 'ADMINISTRADOR' | 'JDMEMBER';
     position: string;
     organization: string;
     status: 'Active' | 'Inactive';
