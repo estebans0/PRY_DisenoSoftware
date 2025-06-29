@@ -56,8 +56,11 @@ export class SessionVisitorListComponent implements OnInit {
 
   // Add this method to your SessionVisitorListComponent class
     getPresenterItems(session: any): any[] {
-    return session.agenda.filter((item: any) => item.presenter === this.nameFilter);
-}
+      if (!session.agenda || !Array.isArray(session.agenda)) {
+        return [];
+      }
+      return session.agenda.filter((item: any) => item.presenter === this.nameFilter);
+  }
 
   search() {
     if (!this.emailFilter && (this.viewType === 'presenter' || this.viewType === 'absent')) {
@@ -76,7 +79,13 @@ export class SessionVisitorListComponent implements OnInit {
         this.sessionService.getSessionsByPresenter(this.nameFilter).subscribe({
           next: (sessions) => {
             console.log('getSessionsByPresenter result:', sessions);
-            this.currentResults = sessions;
+            if (sessions && typeof sessions === 'object' && 'data' in sessions && Array.isArray(sessions.data)) {
+              this.currentResults = sessions.data;
+            } else if (Array.isArray(sessions)) {
+              this.currentResults = sessions;
+            } else {
+              this.currentResults = Object.values(sessions);
+            }
             this.loading = false;
           },
           error: (err) => {
@@ -90,7 +99,24 @@ export class SessionVisitorListComponent implements OnInit {
         this.sessionService.getResponsiblePoints(this.nameFilter).subscribe({
           next: (results) => {
             console.log('getResponsiblePoints result:', results);
-            this.currentResults = results;
+            let data: any[] = [];
+            if (results && typeof results === 'object' && 'data' in results && Array.isArray(results.data)) {
+              data = results.data;
+            } else if (Array.isArray(results)) {
+              data = results;
+            } else {
+              data = Object.values(results);
+            }
+            // Transform to expected structure for the template
+            this.currentResults = data.map((item: any) => ({
+              session: {
+                sessionNumber: item.sessionNumber,
+                date: item.date,
+                status: item.status, // add if available
+                // add other fields if needed
+              },
+              items: item.agendaItems || []
+            }));
             this.loading = false;
           },
           error: (err) => {
@@ -104,7 +130,7 @@ export class SessionVisitorListComponent implements OnInit {
         this.sessionService.getAbsentSessions(this.emailFilter).subscribe({
           next: (sessions) => {
             console.log('getAbsentSessions result:', sessions);
-            this.currentResults = sessions;
+            this.currentResults = Array.isArray(sessions) ? sessions : Object.values(sessions);
             this.loading = false;
           },
           error: (err) => {
@@ -117,6 +143,9 @@ export class SessionVisitorListComponent implements OnInit {
   }
 
   badgeClass(status: string): string {
+    if (!status) {
+      return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100';
+    }
     switch (status.toLowerCase()) {
       case 'scheduled':
         return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100';
@@ -132,6 +161,9 @@ export class SessionVisitorListComponent implements OnInit {
   }
 
   getQuorumStatus(s: any): 'Pending' | 'Achieved' | 'Not Achieved' {
+    if (!s.status || typeof s.status !== 'string') {
+      return 'Pending';
+    }
     if (s.status.toLowerCase() === 'scheduled') {
       return 'Pending';
     }

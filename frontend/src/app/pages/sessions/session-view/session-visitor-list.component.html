@@ -65,7 +65,7 @@
       <div *ngFor="let session of currentResults" class="border-b dark:border-gray-700 p-4">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-lg font-semibold">
-            Sesión #{{ session.number }} - {{ session.date | date:'mediumDate' }}
+            Sesión #{{ session.sessionNumber }} - {{ session.date | date:'mediumDate' }}
           </h2>
           <div class="flex gap-2">
             <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(session.status)">
@@ -101,11 +101,11 @@
       <div *ngFor="let result of currentResults" class="border-b dark:border-gray-700 p-4">
         <div class="flex items-center justify-between mb-2">
           <h2 class="text-lg font-semibold">
-            Sesión #{{ result.session.number }} - {{ result.session.date | date:'mediumDate' }}
+            Sesión #{{ result.session?.sessionNumber || '-' }} - {{ result.session?.date | date:'mediumDate' }}
           </h2>
           <div class="flex gap-2">
-            <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(result.session.status)">
-              {{ result.session.status }}
+            <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(result.session?.status)">
+              {{ result.session?.status }}
             </span>
           </div>
         </div>
