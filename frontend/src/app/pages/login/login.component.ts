@@ -42,8 +42,12 @@ export class LoginComponent {
     this.auth.login({ email: this.form.email, password: this.form.password })
       .subscribe({
         next: (res) => {
-          // On success, we already saved token in localStorage; navigate:
+          if (res.user.tipoUsuario === 'ADMINISTRADOR') {
           this.router.navigate(['/dashboard']);
+          }
+          else if (res.user.tipoUsuario === 'JDMEMBER') {
+            this.router.navigate(['/session-reports']);
+          }
         },
         error: (err) => {
           console.error(err);
