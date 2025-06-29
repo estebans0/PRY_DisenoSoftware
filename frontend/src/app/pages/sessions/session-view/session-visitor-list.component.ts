@@ -41,10 +41,13 @@ export class SessionVisitorListComponent implements OnInit {
   ngOnInit() {
     this.loading = true;
     this.currentUser = this.authService.getCurrentUser();
+    console.log('Current user:', this.currentUser);
     
     if (this.currentUser) {
       this.emailFilter = this.currentUser.email;
-      this.nameFilter = this.currentUser.name;
+      this.nameFilter = this.currentUser.firstName + ' ' + this.currentUser.lastName;
+      console.log('emailFilter:', this.emailFilter);
+      console.log('nameFilter:', this.nameFilter);
       this.search(); // Auto-search with user's data
     } else {
       this.loading = false;
@@ -53,24 +56,26 @@ export class SessionVisitorListComponent implements OnInit {
 
   // Add this method to your SessionVisitorListComponent class
     getPresenterItems(session: any): any[] {
-    return session.agenda.filter((item: any) => item.presenter === this.emailFilter);
+    return session.agenda.filter((item: any) => item.presenter === this.nameFilter);
 }
 
   search() {
     if (!this.emailFilter && (this.viewType === 'presenter' || this.viewType === 'absent')) {
       return;
     }
-    if (!this.nameFilter && this.viewType === 'responsible') {
+    /* if (!this.nameFilter && this.viewType === 'responsible') {
       return;
-    }
+    } */
 
     this.loading = true;
     this.currentResults = [];
+    console.log('search() called with viewType:', this.viewType, 'nameFilter:', this.nameFilter, 'emailFilter:', this.emailFilter);
 
     switch (this.viewType) {
       case 'presenter':
-        this.sessionService.getSessionsByPresenter(this.emailFilter).subscribe({
+        this.sessionService.getSessionsByPresenter(this.nameFilter).subscribe({
           next: (sessions) => {
+            console.log('getSessionsByPresenter result:', sessions);
             this.currentResults = sessions;
             this.loading = false;
           },
@@ -82,8 +87,9 @@ export class SessionVisitorListComponent implements OnInit {
         break;
 
       case 'responsible':
-        this.sessionService.getResponsiblePoints(this.emailFilter).subscribe({
+        this.sessionService.getResponsiblePoints(this.nameFilter).subscribe({
           next: (results) => {
+            console.log('getResponsiblePoints result:', results);
             this.currentResults = results;
             this.loading = false;
           },
@@ -97,6 +103,7 @@ export class SessionVisitorListComponent implements OnInit {
       case 'absent':
         this.sessionService.getAbsentSessions(this.emailFilter).subscribe({
           next: (sessions) => {
+            console.log('getAbsentSessions result:', sessions);
             this.currentResults = sessions;
             this.loading = false;
           },

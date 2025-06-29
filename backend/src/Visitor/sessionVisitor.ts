@@ -6,42 +6,31 @@ import { ISessionVisitor } from "./visitor.interfaces";
 
 export class SessionsByPresenterVisitor implements ISessionVisitor {
     private results: (ISession & Document)[] = [];
-    private currentSession: (ISession & Document) | null = null;
     
-    constructor(private readonly presenterEmail: string) {
-        if (!presenterEmail) {
-            throw new Error('Presenter email is required');
+    constructor(private readonly presenterName: string) {
+        if (!presenterName) {
+            throw new Error('Presenter name is required');
         }
     }
 
     async visitSession(session: ISession & Document): Promise<void> {
-        this.currentSession = session;
-        try {
-            // Conversión explícita a objetos planos
-            const agendaItems = session.agenda.map(item => 
-                item instanceof Document ? item.toObject() : item
-            );
-            
-            for (const item of agendaItems) {
-                await this.visitAgendaItem(item);
-            }
-        } finally {
-            this.currentSession = null;
+        // Convertimos la agenda a objetos planos si es necesario
+        const agendaItems = session.agenda.map(item => 
+            item instanceof Document ? item.toObject() : item
+        );
+
+        // Buscamos items donde el presenter coincida
+        const hasMatchingItems = agendaItems.some(item => 
+            item.presenter === this.presenterName
+        );
+
+        if (hasMatchingItems) {
+            this.results.push(session);
         }
     }
 
-    async visitAgendaItem(item: AgendaItemType): Promise<void> {
-        if (!this.currentSession) {
-            throw new Error('Session context not set');
-        }
-
-        const isDuplicate = this.results.some(s => 
-            s._id.toString() === this.currentSession!._id.toString()
-        );
-
-        if (item.presenter === this.presenterEmail && !isDuplicate) {
-            this.results.push(this.currentSession);
-        }
+    async visitAgendaItem(item: any): Promise<void> {
+        // No es necesario implementar esto para este visitor
     }
 
     getResults(): (ISession & Document)[] {

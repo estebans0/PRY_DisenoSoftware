@@ -1,3 +1,4 @@
+
 // backend/src/controllers/session.controller.ts
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { Types } from 'mongoose';
@@ -415,15 +416,49 @@ export async function removeGuest(
 //controladores del visitor
 export const getSessionsByPresenter: RequestHandler = async (req, res, next) => {
   try {
-    const { presenterEmail } = req.params;
+    const presenterName = req.params.presenterName;
     
-    if (!presenterEmail) {
-      res.status(400).json({ message: 'Presenter email is required' });
+    if (!presenterName) {
+      res.status(400).json({ 
+        success: false,
+        message: 'Presenter name is required' 
+      });
       return;
     }
 
-    const sessions = await queryService.getSessionsByPresenter(presenterEmail);
-    res.json(sessions);
+    // Buscar sesiones usando aggregate
+    const sessions = await queryService.getSessionsByPresenter(presenterName);
+
+    if (sessions.length === 0) {
+      res.status(404).json({
+        success: true,
+        message: 'No sessions found for this presenter',
+        data: []
+      });
+      return;
+    }
+
+    // Formatear respuesta
+    const response = {
+      success: true,
+      count: sessions.length,
+      data: sessions.map(session => ({
+        sessionId: session._id,
+        sessionNumber: session.number,
+        date: session.date,
+        time: session.time,
+        location: session.location,
+        status: session.status,
+        agendaItems: session.agenda.map(item => ({
+          itemId: item._id,
+          title: item.title,
+          order: item.order,
+          duration: item.duration
+        }))
+      }))
+    };
+
+    res.json(response);
   } catch (err) {
     next(err);
   }
@@ -431,15 +466,50 @@ export const getSessionsByPresenter: RequestHandler = async (req, res, next) => 
 
 export const getResponsiblePoints: RequestHandler = async (req, res, next) => {
   try {
-    const { memberEmail } = req.params;
+    const memberName = req.params.memberName;
     
-    if (!memberEmail) {
-      res.status(400).json({ message: 'Member email is required' });
+    if (!memberName) {
+      res.status(400).json({ 
+        success: false,
+        message: 'Member name is required' 
+      });
       return;
     }
 
-    const results = await queryService.getResponsiblePoints(memberEmail);
-    res.json(results);
+    // Buscar puntos de agenda donde el miembro es responsable
+    const results = await queryService.getResponsiblePoints(memberName);
+
+    if (results.length === 0) {
+      res.status(404).json({
+        success: true,
+        message: 'No agenda items found for this responsible member',
+        data: []
+      });
+      return;
+    }
+
+    // Formatear respuesta
+    const response = {
+      success: true,
+      count: results.length,
+      data: results.map(result => ({
+        sessionId: result.session._id,
+        sessionNumber: result.session.number,
+        date: result.session.date,
+        agendaItems: result.items.map(item => ({
+          itemId: item._id,
+          title: item.title,
+          presenter: item.presenter,
+          actions: item.actions.map(action => ({
+            actionId: action._id,
+            description: action.description,
+            dueDate: action.dueDate
+          }))
+        }))
+      }))
+    };
+
+    res.json(response);
   } catch (err) {
     next(err);
   }

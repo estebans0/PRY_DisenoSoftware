@@ -41,10 +41,13 @@ router.post(
 );
 
 //routes visitor
-router.get('/presenter/:presenterEmail', SessionController.getSessionsByPresenter);
-router.get('/responsible/:memberEmail', SessionController.getResponsiblePoints);
+//router.get('/presenter/:presenterEmail', SessionController.getSessionsByPresenter);
+//router.get('/responsible/:memberEmail', SessionController.getResponsiblePoints);
 router.get('/absent/:memberEmail', SessionController.getAbsentSessions);
 router.get('/date-range', SessionController.getSessionsInDateRange);
 router.get('/details/:id', SessionController.getSessionDetailsById);
 router.get('/filter-minutes/:memberEmail', SessionController.getFilteredMinutes);
+
+router.get('/presenter/:presenterName', SessionController.getSessionsByPresenter);
+router.get('/responsible/:memberName', SessionController.getResponsiblePoints);
 export default router;
