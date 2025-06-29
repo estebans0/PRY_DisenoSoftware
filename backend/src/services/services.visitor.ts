@@ -1,26 +1,39 @@
+
 import { Session } from '../models/session.model';
 import { AbsentSessionsVisitor, ResponsiblePointsVisitor, SessionsByPresenterVisitor } from '../Visitor/sessionVisitor';
 
 export class SessionQueryService {
-    async getSessionsByPresenter(presenterEmail: string): Promise<any[]> {
-        const visitor = new SessionsByPresenterVisitor(presenterEmail);
-        const sessions = await Session.find({});
-        
-        for (const session of sessions) {
-            await session.accept(visitor);
+    async getSessionsByPresenter(presenterName: string): Promise<any[]> {
+        if (!presenterName || typeof presenterName !== 'string' || presenterName.trim() === '') {
+        throw new Error('Valid presenter name is required');
         }
-        
+
+        const visitor = new SessionsByPresenterVisitor(presenterName);
+        const sessions = await Session.find({
+        'agenda.presenter': presenterName
+        }).populate('agenda');
+
+        for (const session of sessions) {
+        await session.accept(visitor);
+        }
+
         return visitor.getResults();
     }
 
-    async getResponsiblePoints(responsibleEmail: string): Promise<any[]> {
-        const visitor = new ResponsiblePointsVisitor(responsibleEmail);
-        const sessions = await Session.find({});
-        
+    async getResponsiblePoints(responsibleName: string): Promise<any[]> {
+        if (!responsibleName || typeof responsibleName !== 'string' || responsibleName.trim() === '') {
+            throw new Error('Valid responsible name is required');
+        }
+
+        const visitor = new ResponsiblePointsVisitor(responsibleName);
+        const sessions = await Session.find({
+            'agenda.actions.assignee.name': responsibleName
+        }).populate('agenda');
+
         for (const session of sessions) {
             await session.accept(visitor);
         }
-        
+
         return visitor.getResults();
     }
 
@@ -45,3 +58,5 @@ export class SessionQueryService {
         return Session.findById(sessionId);
     }
 }
+
+

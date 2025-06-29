@@ -1,10 +1,10 @@
 <div class="container mx-auto py-6 space-y-6">
 
-  <!-- Title & “New Session” Button -->
+  <!-- Title & “New Session” Button, Matias changed the route to /session-reports, change back to /sessions/new -->
   <div class="flex items-center justify-between">
     <h1 class="text-3xl font-bold">Dashboard</h1>
     <button
-      routerLink="/sessions/new"
+      routerLink="/session-reports"
       class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 text-sm"
     >
     <lucide-icon name="Plus" class="h-4 w-4" />
@@ -50,7 +50,7 @@
     </div>
   </div>
 
-  <!-- Tabs Nav (inline-flex + dark variant) -->
+  <!-- Tabs Nav (inline-flex + dark variant),  -->
   <div class="inline-flex space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
     <button
       class="px-4 py-2 rounded-lg text-sm"
@@ -127,7 +127,7 @@
           <div class="p-4 border-t dark:border-gray-700 text-sm bg-white dark:bg-gray-800">
             <!-- ROUTING ADDED HERE -->
             <a
-              [routerLink]="['/sessions']"
+              [routerLink]="['/sessions']" 
               class="text-blue-600 hover:underline dark:text-blue-400">
               View all sessions →
             </a>

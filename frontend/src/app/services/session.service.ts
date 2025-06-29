@@ -96,6 +96,20 @@ export class SessionService {
       form
     );
   }
+//Cosas que se necesitan para el visitor
+  /** Get all sessions where the user is a presenter. */
+  getSessionsByPresenter(email: string): Observable<Session[]> {
+    return this.http.get<Session[]>(`${this.base}/presenter/${email}`);
+  }
+  /** Get all sessions where the user is responsible for a point. */
+  getResponsiblePoints(email: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.base}/responsible/${email}`);
+  }
+  /** Get all sessions where the user is absent. */
+  getAbsentSessions(email: string): Observable<Session[]> {
+    return this.http.get<Session[]>(`${this.base}/absent/${email}`);
+  }
+
 
   /** Update the agenda array on the session. */
   updateAgenda(sessionId: string, agenda: any[]): Observable<Session> {
