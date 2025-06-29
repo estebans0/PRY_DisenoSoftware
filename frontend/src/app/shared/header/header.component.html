@@ -43,27 +43,42 @@
     <div class="flex items-center gap-6">
       <!-- Nav links -->
       <nav class="flex items-center gap-6">
+        <!-- Dashboard - Only for Administrators -->
         <a
+          *ngIf="isAdministrator"
           routerLink="/dashboard"
           class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
         >
           <lucide-icon name="Home" class="h-5 w-5"></lucide-icon>
           Dashboard
         </a>
+        <!-- Members - Only for Administrators -->
         <a
+          *ngIf="isAdministrator"
           routerLink="/members"
           class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
         >
           <lucide-icon name="Users" class="h-5 w-5"></lucide-icon>
           Members
         </a>
+        <!-- Sessions - Only for Administrators -->
         <a
+          *ngIf="isAdministrator"
           routerLink="/sessions"
           class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
         >
           <lucide-icon name="Calendar" class="h-5 w-5"></lucide-icon>
           Sessions
         </a>
+        <!-- Session Reports - For JD Members -->
+        <a
+          routerLink="/session-reports"
+          class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
+        >
+          <lucide-icon name="FileText" class="h-5 w-5"></lucide-icon>
+          Session Reports
+        </a>
+        <!-- Settings - Available for all users -->
         <a
           routerLink="/settings"
           class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
@@ -116,7 +131,17 @@
                 Profile
               </button>
             </li>
-            <li>
+            <!-- Session Reports - Only for JD Members -->
+            <li *ngIf="isJDMember">
+              <button
+                (click)="goToSessionReports()"
+                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
+              >
+                Session Reports
+              </button>
+            </li>
+            <!-- My Invitations - Only for Administrators -->
+            <li *ngIf="isAdministrator">
               <a
                 routerLink="/invitations"
                 class="block px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"

@@ -47,10 +47,28 @@ export class HeaderComponent {
     this.router.navigate(['/profile']);
   }
 
+  /** Navigate to /session-reports and close menu */
+  goToSessionReports() {
+    this.profileMenu = false;
+    this.router.navigate(['/session-reports']);
+  }
+
   /** Log out: clear token + redirect to /login */
   logout() {
     this.authService.logout();
     this.profileMenu = false;
+  }
+
+  /** Check if current user is administrator */
+  get isAdministrator(): boolean {
+    const user = this.currentUser;
+    return user?.tipoUsuario === 'ADMINISTRADOR';
+  }
+
+  /** Check if current user is JD Member */
+  get isJDMember(): boolean {
+    const user = this.currentUser;
+    return user?.tipoUsuario === 'JDMEMBER';
   }
 
   /** Get current user info */
