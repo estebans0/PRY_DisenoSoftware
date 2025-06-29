@@ -67,8 +67,8 @@ export class RegisterComponent {
       tipoUsuario: f.tipoUsuario
     }).subscribe({
       next: (res) => {
-        // On success, token was stored—navigate to dashboard
-        this.router.navigate(['/dashboard']);
+        // On success, token was stored—navigate to session reports
+        this.router.navigate(['/session-reports']);
       },
       error: (err) => {
         console.error(err);
