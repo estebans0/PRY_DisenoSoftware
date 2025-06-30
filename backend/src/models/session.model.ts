@@ -161,7 +161,7 @@ const SessionSchema = new Schema<ISession>({
     }
   },
 
-  quorum:     { type: String, enum: ['Pending','Achieved','Not Achieved'], default: 'Pending' },
+  quorum:     { type: String, enum: ['Pending','Achieved','Not Achieved'], default: 'Achieved' },
 
   // ─── ADDED ───
   startTime:  { type: Date },

@@ -33,7 +33,7 @@ const userSchema = new Schema<User>(
       default:  'JDMEMBER'
     },
 
-    position:      { type: String, required: true, trim: true, default: 'Unassigned' },
+    position:      { type: String, required: true, trim: true, default: 'Board member' },
 
     password:      { type: String, required: true },
 

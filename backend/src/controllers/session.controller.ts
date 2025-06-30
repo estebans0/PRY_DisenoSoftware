@@ -44,7 +44,7 @@ export async function create(req: Request, res: Response, next: NextFunction): P
     const { _id, __v, ...data } = req.body;
     // set defaults
     data.status = data.status || 'Scheduled';
-    data.quorum = data.quorum || 'Pending';
+    data.quorum = data.quorum || 'Achieved';
 
     const session = new Session(data);
     const saved = await session.save();
@@ -104,18 +104,36 @@ export async function remove(req: Request, res: Response, next: NextFunction): P
   }
 }
 
-// POST /sessions/:id/start
-export async function startSession(req: Request, res: Response, next: NextFunction): Promise<void> {
+// ─── POST /sessions/:id/start ──────────────────────────────────
+export async function startSession(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   try {
+    // 1) update the session to In Progress + set startTime
     const session = await Session.findByIdAndUpdate(
       req.params.id,
       { status: 'In Progress', startTime: new Date() },
       { new: true, runValidators: true, context: 'query' }
     );
+
     if (!session) {
       res.sendStatus(404);
       return;
     }
+
+    // 2) notify all confirmed attendees
+    const recipients = (session.attendees || [])
+      .filter((a: any) => a.status === 'Confirmed')
+      .map((a: any) => a.email)
+      .filter(Boolean);
+
+    if (recipients.length > 0) {
+      await messageObserver.onSessionStart(session, recipients);
+    }
+
+    // 3) return the updated session
     res.json(session);
   } catch (err) {
     next(err);
@@ -133,7 +151,7 @@ function sanitizeAgenda(rawAgenda: any[]): any[] {
     pro:           item.pro,
     against:       item.against,
     abstained:     item.abstained,
-    notes:         item.notes || '', 
+    notes:         item.notes || '',
     actions:       (item.actions || []).map((a: any) => ({
                      description: a.description,
                      assignee:    { name: a.assignee.name },
@@ -144,51 +162,61 @@ function sanitizeAgenda(rawAgenda: any[]): any[] {
   }));
 }
 
-/**
- * POST /sessions/:id/end
- * Close the session, save the final agenda, AND fire assignment notices
- */
+// —── POST /sessions/:id/end ────────────────────────────────────
 export const endSession: RequestHandler = async (req, res, next) => {
   try {
-    // 1) sanitize + persist final agenda
-    const sanitized = sanitizeAgenda(req.body.agenda || []);
-    const session = await Session.findByIdAndUpdate(
-      req.params.id,
-      {
-        status:  'Completed',
-        endTime: new Date(),
-        agenda:  sanitized
-      },
-      { new: true, runValidators: true, context: 'query' }
-    );
-
+    // 1) Load the session
+    const session = await Session.findById(req.params.id);
     if (!session) {
       res.sendStatus(404);
       return;
     }
 
-    // 2) automatically notify every 'fondo estrategia y desarrollo' assignee
+    // 2) Determine final agenda (only overwrite if client provided one)
+    const finalAgenda = Array.isArray(req.body.agenda)
+      ? sanitizeAgenda(req.body.agenda)
+      : session.agenda;
+
+    // 3) Apply status, endTime, agenda → save
+    session.status  = 'Completed';
+    session.endTime = new Date();
+    session.agenda  = finalAgenda;
+    await session.save();
+
+    // 4) “Fondo estrategia y desarrollo” assignment notices
     for (const item of session.agenda) {
       if (
         item.tipoPunto === 'fondo estrategia y desarrollo' &&
         Array.isArray(item.actions)
       ) {
         for (const action of item.actions) {
-          // find the email for this assignee
-          const attendee = session.attendees.find(a => a.name === action.assignee.name);
+          // find attendee by name so we get a real email
+          const attendee = session.attendees.find(
+            (a: any) => a.name === action.assignee.name
+          );
           const assigneeEmail = attendee?.email ?? action.assignee.name;
-
           await messageObserver.onAgendaAssignment(
             session,
             item.title,
-            assigneeEmail
+            assigneeEmail,
+            item.order
           );
         }
       }
     }
 
-    // 3) return the updated session
+    // 5) Notify all confirmed attendees that the session ended
+    const endRecipients = (session.attendees || [])
+      .filter((a: any) => a.status === 'Confirmed')
+      .map((a: any) => a.email)
+      .filter(Boolean);
+    if (endRecipients.length) {
+      await messageObserver.onSessionEnd(session, endRecipients);
+    }
+
+    // 6) Finally, send back the updated session
     res.json(session);
+    return;
   } catch (err) {
     next(err);
   }
@@ -213,8 +241,7 @@ export async function notifySession(
     const memberEmails = (session.attendees || [])
       .filter((a: any) => a.status === 'Confirmed')
       .map((a: any) => a.email);
-    const guestEmails = (session.guests || [])
-      .map((g: any) => g.email);
+    const guestEmails = (session.guests || []).map((g: any) => g.email);
 
     const recipients = Array.from(new Set([...memberEmails, ...guestEmails]));
     if (recipients.length === 0) {
@@ -282,7 +309,7 @@ export async function updateAgenda(
       .filter((i: any) => i.tipoPunto === 'fondo estrategia y desarrollo')
       .forEach((item: any) => {
         (item.actions || []).forEach((a: any) => {
-          messageObserver.onAgendaAssignment(session, item.title, a.assignee.name /*or email*/);
+          messageObserver.onAgendaAssignment(session, item.title, a.assigneeEmail || a.assignee.name, item.order);
         });
       });
     res.json(session);

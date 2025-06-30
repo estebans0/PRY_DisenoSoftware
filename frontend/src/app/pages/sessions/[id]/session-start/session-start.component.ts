@@ -28,6 +28,7 @@ interface AgendaItem {
   title: string;
   presenter: string;
   duration: number;     // in minutes
+  tipoPunto: string;
   documents: string[];
   notes: string;
   voting: {
@@ -375,6 +376,7 @@ export class SessionStartComponent implements OnInit, OnDestroy {
       title:         ai.title,
       duration:      ai.duration,
       presenter:     ai.presenter,
+      tipoPunto:     ai.tipoPunto,
       estimatedTime: ai.duration,
       pro:           this.buildVoterList(ai.voting.inFavor),
       against:       this.buildVoterList(ai.voting.against),

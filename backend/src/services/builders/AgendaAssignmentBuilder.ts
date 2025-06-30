@@ -1,12 +1,17 @@
 // backend/src/services/builders/AgendaAssignmentBuilder.ts
+
 import { MessageBuilder, MessageData } from './MessageBuilder';
 
+/** include the agenda item’s order (Z) */
 export interface AgendaAssignmentData extends MessageData {
-  pointTitle: string;
+  pointTitle:   string;
+  agendaOrder:  number;
 }
 
 export class AgendaAssignmentBuilder extends MessageBuilder {
-  constructor(protected data: AgendaAssignmentData) { super(data); }
+  constructor(protected data: AgendaAssignmentData) {
+    super(data);
+  }
 
   protected addRecipients(): void {
     this.msg.recipients = this.data.recipients;
@@ -18,21 +23,22 @@ export class AgendaAssignmentBuilder extends MessageBuilder {
   }
 
   protected addBody(): void {
-    const s = this.data.session;
+    const s    = this.data.session;
+    const { pointTitle, agendaOrder } = this.data;
+    // format the session date
+    const dateStr = new Date(s.date).toLocaleDateString();
     this.msg.body =
-      `You’ve been assigned to present “${this.data.pointTitle}” in ` +
-      `session #${s.number} on ${new Date(s.date).toLocaleString()}.\n\n` +
+      `En la sesión #${s.number} (fecha: ${dateStr}), se le asignó la responsabilidad de atender ` +
+      `el punto #${agendaOrder} (“${pointTitle}”) de fondo estrategia y desarrollo.\n\n` +
       `— BoardFlow`;
   }
 
   protected addSessionNumber(): void {
-    this.msg.sessionNumber = this.data.session.number;
-    const s = this.data.session;
+    const s    = this.data.session;
     const when = s.startTime ? new Date(s.startTime) : new Date(s.date);
-
-    // same timestamp override:
-    this.msg.timestamp = when;
-    this.msg.createdAt = when;
-    this.msg.updatedAt = when;
+    this.msg.sessionNumber = s.number;
+    this.msg.timestamp     = when;
+    this.msg.createdAt     = when;
+    this.msg.updatedAt     = when;
   }
 }
