@@ -110,6 +110,7 @@ export class SessionVisitorListComponent implements OnInit {
             // Transform to expected structure for the template
             this.currentResults = data.map((item: any) => ({
               session: {
+                sessionId: item.sessionId, // Add sessionId for routing
                 sessionNumber: item.sessionNumber,
                 date: item.date,
                 status: item.status, // add if available
