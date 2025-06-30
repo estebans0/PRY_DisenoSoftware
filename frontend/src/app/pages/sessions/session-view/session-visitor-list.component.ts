@@ -1,12 +1,15 @@
-// src/app/pages/sessions/session-visitor-list/session-visitor-list.component.ts
+// src/app/pages/sessions/session-view/session-visitor-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { FormsModule }   from '@angular/forms';
+import { RouterModule }  from '@angular/router';
 import { LucideAngularModule } from 'lucide-angular';
 
 import { SessionService } from '../../../services/session.service';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService    } from '../../../services/auth.service';
+
+import { forkJoin, of }       from 'rxjs';
+import { switchMap, catchError } from 'rxjs/operators';
 
 @Component({
   selector: 'app-session-visitor-list',
@@ -42,13 +45,13 @@ export class SessionVisitorListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.loading = true;
+    this.loading     = true;
     this.currentUser = this.authService.getCurrentUser();
     console.log('Current user:', this.currentUser);
     
     if (this.currentUser) {
       this.emailFilter = this.currentUser.email;
-      this.nameFilter = this.currentUser.firstName + ' ' + this.currentUser.lastName;
+      this.nameFilter  = this.currentUser.firstName + ' ' + this.currentUser.lastName;
       console.log('emailFilter:', this.emailFilter);
       console.log('nameFilter:', this.nameFilter);
       this.search(); // Auto-search with user's data
@@ -57,41 +60,63 @@ export class SessionVisitorListComponent implements OnInit {
     }
   }
 
-  // Add this method to your SessionVisitorListComponent class
-    getPresenterItems(session: any): any[] {
-      if (!session.agenda || !Array.isArray(session.agenda)) {
-        return [];
-      }
-      return session.agenda.filter((item: any) => item.presenter === this.nameFilter);
+  // for “presenter” tab
+  getPresenterItems(session: any): any[] {
+    if (!session.agenda || !Array.isArray(session.agenda)) {
+      return [];
+    }
+    return session.agenda.filter((item: any) => item.presenter === this.nameFilter);
+  }
+
+  // NEW: only agenda-items where this user has at least one action
+  getResponsibleItems(result: any): any[] {
+    if (!Array.isArray(result.items)) return [];
+    return result.items.filter((item: any) =>
+      Array.isArray(item.actions) &&
+      item.actions.some((a: any) => a.assignee.name === this.nameFilter)
+    );
   }
 
   search() {
     if (!this.emailFilter && (this.viewType === 'presenter' || this.viewType === 'absent')) {
       return;
     }
-    /* if (!this.nameFilter && this.viewType === 'responsible') {
-      return;
-    } */
 
     this.loading = true;
     this.currentResults = [];
-    console.log('search() called with viewType:', this.viewType, 'nameFilter:', this.nameFilter, 'emailFilter:', this.emailFilter);
+    console.log(
+      'search() called with viewType:', 
+      this.viewType, 
+      'nameFilter:', this.nameFilter, 
+      'emailFilter:', this.emailFilter
+    );
 
     switch (this.viewType) {
       case 'presenter':
-        this.sessionService.getSessionsByPresenter(this.nameFilter).subscribe({
-          next: (sessions) => {
-            console.log('getSessionsByPresenter result:', sessions);
-            if (sessions && typeof sessions === 'object' && 'data' in sessions && Array.isArray(sessions.data)) {
-              this.currentResults = sessions.data;
-            } else if (Array.isArray(sessions)) {
-              this.currentResults = sessions;
-            } else {
-              this.currentResults = Object.values(sessions);
-            }
+        // 1) get IDs, 2) fetch full session, 3) attach sessionId for toggles
+        this.sessionService.getSessionsByPresenter(this.nameFilter).pipe(
+          switchMap((resp: any) => {
+            const ids: string[] = Array.isArray(resp.data)
+              ? resp.data.map((s: any) => s.sessionId)
+              : [];
+            const calls = ids.map((id: string) =>
+              this.sessionService.getSession(id).pipe(
+                catchError(err => {
+                  console.error('error loading session', id, err);
+                  return of(null);
+                })
+              )
+            );
+            return forkJoin(calls);
+          })
+        ).subscribe({
+          next: (sessions: any[]) => {
+            this.currentResults = sessions
+              .filter((s): s is object => s != null)
+              .map(s => ({ ...s, sessionId: (s as any)._id }));
             this.loading = false;
           },
-          error: (err) => {
+          error: err => {
             console.error(err);
             this.loading = false;
           }
@@ -110,14 +135,17 @@ export class SessionVisitorListComponent implements OnInit {
             } else {
               data = Object.values(results);
             }
-            // Transform to expected structure for the template
+            // Transform to expected structure
             this.currentResults = data.map((item: any) => ({
               session: {
-                sessionId: item.sessionId, // Add sessionId for routing
+                sessionId:     item.sessionId,       // for toggling & routing
                 sessionNumber: item.sessionNumber,
-                date: item.date,
-                status: item.status, // add if available
-                // add other fields if needed
+                date:          item.date,
+                status:        item.status,
+                type:          item.type,
+                location:      item.location,
+                modality:      item.modality,
+                quorum:        item.quorum
               },
               items: item.agendaItems || []
             }));
@@ -171,7 +199,6 @@ export class SessionVisitorListComponent implements OnInit {
     if (s.status.toLowerCase() === 'scheduled') {
       return 'Pending';
     }
-    // Simplified quorum logic - adjust as needed
     return s.quorum || 'Pending';
   }
 

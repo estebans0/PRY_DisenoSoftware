@@ -44,7 +44,10 @@ import {
   Camera,
   Search,
   Circle,
-  Inbox
+  Inbox,
+  // newly added:
+  Loader,
+  ExternalLink
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -90,7 +93,10 @@ export const appConfig: ApplicationConfig = {
         Camera,
         Search,
         Circle,
-        Inbox
+        Inbox,
+        // newly added:
+        Loader,
+        ExternalLink
       })
     )
   ]
