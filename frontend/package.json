@@ -1,14 +1,19 @@
 {
   "name": "frontend",
   "version": "0.0.0",
+  "private": true,
+  "homepage": "https://github.com/estebans0/PRY_DisenoSoftware.git",
+
   "scripts": {
     "ng": "ng",
     "start": "ng serve -o",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+
+    "predeploy": "ng build --configuration production --base-href=/PRY_DisenoSoftware/",
+    "deploy": "npx angular-cli-ghpages --dir=dist/frontend"
   },
-  "private": true,
   "dependencies": {
     "@angular/animations": "^18.2.0",
     "@angular/common": "^18.2.0",
@@ -34,6 +39,7 @@
     "@types/html2canvas": "^1.0.0",
     "@types/jasmine": "~5.1.0",
     "@types/jspdf": "^2.0.0",
+    "angular-cli-ghpages": "^2.0.3",
     "autoprefixer": "^10.4.21",
     "jasmine-core": "~5.2.0",
     "karma": "~6.4.0",
