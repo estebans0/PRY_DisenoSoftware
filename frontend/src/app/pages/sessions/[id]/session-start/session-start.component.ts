@@ -31,6 +31,10 @@ interface AgendaItem {
   tipoPunto: string;
   documents: string[];
   notes: string;
+  responsible?: {       // Add responsible field
+    name: string;
+    email: string;
+  };
   voting: {
     inFavor: number;
     against: number;
@@ -70,6 +74,11 @@ export class SessionStartComponent implements OnInit, OnDestroy {
 
   newTaskDesc:     Record<number,string> = {};
   newTaskAssignee: Record<number,string> = {};
+
+  /**
+   * Track responsible person selections for each agenda item
+   */
+  responsibleSelections: Record<number, string> = {}; // email string
 
   /**
    * For each agenda item, track which attendee IDs are checked
@@ -122,6 +131,7 @@ export class SessionStartComponent implements OnInit, OnDestroy {
             description: ai.description || '',
             documents: (ai.documents || []).map((d: any) => d.fileName),
             notes: ai.notes || '',
+            responsible: ai.responsible || null, // Add responsible field
             tasks: (ai.actions || []).map((t: any) => ({
               description: t.description,
               assignee: t.assignee?.name || ''
@@ -139,6 +149,9 @@ export class SessionStartComponent implements OnInit, OnDestroy {
           this.openItems[item.id] = false;
           this.newTaskDesc[item.id] = '';
           this.newTaskAssignee[item.id] = '';
+          
+          // Initialize responsible person selection
+          this.responsibleSelections[item.id] = ai.responsible?.email || '';
 
           // Initialize vote selections
           this.voteSelections[item.id] = {
@@ -254,6 +267,26 @@ export class SessionStartComponent implements OnInit, OnDestroy {
     this.persistItem(itemId);
   }
 
+  assignResponsible(itemId: number): void {
+    const selectedEmail = this.responsibleSelections[itemId];
+    const item = this.agenda.find(a => a.id === itemId);
+    
+    if (!item || !selectedEmail) return;
+    
+    // Find the attendee by email
+    const attendee = this.attendees.find(a => a.email === selectedEmail);
+    if (!attendee) return;
+    
+    // Assign the responsible person
+    item.responsible = {
+      name: attendee.name,
+      email: attendee.email
+    };
+    
+    // Save the changes
+    this.persistItem(itemId);
+  }
+
   private persistItem(itemId: number): void {
     const payload = this.buildFullAgendaPayload();
     this.sessionService.updateAgenda(this.sessionId, payload).subscribe({
@@ -350,6 +383,10 @@ export class SessionStartComponent implements OnInit, OnDestroy {
     return this.presentCount >= Math.ceil(this.attendees.length / 2);
   }
 
+  get presentAttendees(): Attendee[] {
+    return this.attendees.filter(att => att.status === 'Present');
+  }
+
   getSessionElapsed(): string {
     if (!this.startTime) return '0:00';
     const secs = Math.floor((Date.now() - this.startTime.getTime()) / 1000);
@@ -387,7 +424,8 @@ export class SessionStartComponent implements OnInit, OnDestroy {
                       })),
       documents:     [] as any[],
       decision:      ai.voting.result || null,
-      notes:         ai.notes
+      notes:         ai.notes,
+      responsible:   ai.responsible || null
     }));
   }
 

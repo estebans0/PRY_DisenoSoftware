@@ -185,12 +185,12 @@
               <div *ngFor="let a of attendees" class="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  [checked]="voteSelections[item.id]?.inFavor?.includes(a.email)"
+                  [checked]="voteSelections[item.id].inFavor.includes(a.email)"
                   (change)="toggleVote(item.id, 'inFavor', a.email, $any($event.target).checked)"
                   [disabled]="
                     sessionEnded
-                    || voteSelections[item.id]?.against?.includes(a.email)
-                    || voteSelections[item.id]?.abstain?.includes(a.email)
+                    || voteSelections[item.id].against.includes(a.email)
+                    || voteSelections[item.id].abstain.includes(a.email)
                   "
                 />
                 <span class="ml-2">{{ a.name }}</span>
@@ -203,12 +203,12 @@
               <div *ngFor="let a of attendees" class="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  [checked]="voteSelections[item.id]?.against?.includes(a.email)"
+                  [checked]="voteSelections[item.id].against.includes(a.email)"
                   (change)="toggleVote(item.id, 'against', a.email, $any($event.target).checked)"
                   [disabled]="
                     sessionEnded
-                    || voteSelections[item.id]?.inFavor?.includes(a.email)
-                    || voteSelections[item.id]?.abstain?.includes(a.email)
+                    || voteSelections[item.id].inFavor.includes(a.email)
+                    || voteSelections[item.id].abstain.includes(a.email)
                   "
                 />
                 <span class="ml-2">{{ a.name }}</span>
@@ -221,12 +221,12 @@
               <div *ngFor="let a of attendees" class="flex items-center text-sm">
                 <input
                   type="checkbox"
-                  [checked]="voteSelections[item.id]?.abstain?.includes(a.email)"
+                  [checked]="voteSelections[item.id].abstain.includes(a.email)"
                   (change)="toggleVote(item.id, 'abstain', a.email, $any($event.target).checked)"
                   [disabled]="
                     sessionEnded
-                    || voteSelections[item.id]?.inFavor?.includes(a.email)
-                    || voteSelections[item.id]?.against?.includes(a.email)
+                    || voteSelections[item.id].inFavor.includes(a.email)
+                    || voteSelections[item.id].against.includes(a.email)
                   "
                 />
                 <span class="ml-2">{{ a.name }}</span>
@@ -246,6 +246,37 @@
             <div *ngIf="voteSelections[item.id].result" class="text-sm">
               The result of the votes was:
               <span class="font-medium">{{ voteSelections[item.id].result }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Responsible Person Assignment - Only shown for 'fondo estrategia y desarrollo' items -->
+        <div *ngIf="item.tipoPunto === 'fondo estrategia y desarrollo'">
+          <h4 class="font-medium">Responsible Person Assignment</h4>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm mb-1">Assign Responsible Person</label>
+              <select
+                [(ngModel)]="responsibleSelections[item.id]"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-2"
+                (change)="assignResponsible(item.id)"
+              >
+                <option value="">Select responsible person</option>
+                <option 
+                  *ngFor="let a of presentAttendees" 
+                  [value]="a.email"
+                >
+                  {{ a.name }} ({{ a.email }})
+                </option>
+              </select>
+            </div>
+            <div *ngIf="item.responsible" class="flex items-center">
+              <div class="text-sm">
+                <span class="text-gray-600">Currently assigned to:</span><br>
+                <span class="font-medium">{{ item.responsible.name }}</span>
+                <span class="text-gray-500">({{ item.responsible.email }})</span>
+              </div>
             </div>
           </div>
         </div>
