@@ -12,6 +12,37 @@ import { MessageObserver } from '../services/MessageObserver';
 // —── Setup Observer ─────────────────────────────────────────
 const messageObserver = new MessageObserver();
 
+// —── Validation helper for responsible field ──────────────────────
+function validateResponsibleField(sessionData: any): { isValid: boolean; error?: string } {
+  if (!sessionData.agenda || !Array.isArray(sessionData.agenda)) {
+    return { isValid: true }; // No agenda to validate
+  }
+
+  const attendees = sessionData.attendees || [];
+  const attendeeEmails = attendees.map((a: any) => a.email?.toLowerCase()).filter(Boolean);
+
+  for (const item of sessionData.agenda) {
+    if (item.tipoPunto === 'fondo estrategia y desarrollo' && item.responsible) {
+      if (!item.responsible.email) {
+        return { 
+          isValid: false, 
+          error: `Agenda item "${item.title}" has a responsible person without email` 
+        };
+      }
+      
+      const responsibleEmail = item.responsible.email.toLowerCase();
+      if (!attendeeEmails.includes(responsibleEmail)) {
+        return { 
+          isValid: false, 
+          error: `Responsible person "${item.responsible.name}" (${item.responsible.email}) for agenda item "${item.title}" must be an attendee` 
+        };
+      }
+    }
+  }
+
+  return { isValid: true };
+}
+
 // —── Setup Multer upload storage ───────────────────────────────────────────────
 const uploadDir = path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
@@ -42,6 +73,14 @@ export async function list(req: Request, res: Response, next: NextFunction): Pro
 export async function create(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
     const { _id, __v, ...data } = req.body;
+    
+    // Validate responsible field
+    const validation = validateResponsibleField(data);
+    if (!validation.isValid) {
+      res.status(400).json({ message: validation.error });
+      return;
+    }
+    
     // set defaults
     data.status = data.status || 'Scheduled';
     data.quorum = data.quorum || 'Achieved';
@@ -75,6 +114,13 @@ export async function getOne(req: Request, res: Response, next: NextFunction): P
 // PUT /sessions/:id
 export async function update(req: Request, res: Response, next: NextFunction): Promise<void> {
   try {
+    // Validate responsible field
+    const validation = validateResponsibleField(req.body);
+    if (!validation.isValid) {
+      res.status(400).json({ message: validation.error });
+      return;
+    }
+    
     const updated = await Session.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -158,7 +204,8 @@ function sanitizeAgenda(rawAgenda: any[]): any[] {
                      dueDate:     a.dueDate
                    })),
     documents:     item.documents || [],
-    decision:      item.decision || null
+    decision:      item.decision || null,
+    responsible:   item.responsible || null
   }));
 }
 
@@ -185,20 +232,30 @@ export const endSession: RequestHandler = async (req, res, next) => {
 
     // 4) “Fondo estrategia y desarrollo” assignment notices
     for (const item of session.agenda) {
-      if (
-        item.tipoPunto === 'fondo estrategia y desarrollo' &&
-        Array.isArray(item.actions)
-      ) {
-        for (const action of item.actions) {
-          // find attendee by name so we get a real email
-          const attendee = session.attendees.find(
-            (a: any) => a.name === action.assignee.name
-          );
-          const assigneeEmail = attendee?.email ?? action.assignee.name;
+      if (item.tipoPunto === 'fondo estrategia y desarrollo') {
+        // Notify for action assignments
+        if (Array.isArray(item.actions)) {
+          for (const action of item.actions) {
+            // find attendee by name so we get a real email
+            const attendee = session.attendees.find(
+              (a: any) => a.name === action.assignee.name
+            );
+            const assigneeEmail = attendee?.email ?? action.assignee.name;
+            await messageObserver.onAgendaAssignment(
+              session,
+              item.title,
+              assigneeEmail,
+              item.order
+            );
+          }
+        }
+        
+        // Notify for responsible person assignment
+        if (item.responsible && item.responsible.email) {
           await messageObserver.onAgendaAssignment(
             session,
             item.title,
-            assigneeEmail,
+            item.responsible.email,
             item.order
           );
         }
@@ -302,15 +359,41 @@ export async function updateAgenda(
       res.sendStatus(404);
       return;
     }
+    
+    // Create a temporary session object for validation
+    const tempSessionData = {
+      attendees: session.attendees,
+      agenda: req.body.agenda || []
+    };
+    
+    // Validate responsible field
+    const validation = validateResponsibleField(tempSessionData);
+    if (!validation.isValid) {
+      res.status(400).json({ message: validation.error });
+      return;
+    }
+    
     session.agenda = sanitizeAgenda(req.body.agenda || []);
     await session.save();
-    // Auto‐notify for each "fondo estrategia y desarrollo" assignment
+    
+    // Auto‐notify for each "fondo estrategia y desarrollo" item
     session.agenda
       .filter((i: any) => i.tipoPunto === 'fondo estrategia y desarrollo')
-      .forEach((item: any) => {
+      .forEach(async (item: any) => {
+        // Notify for action assignments
         (item.actions || []).forEach((a: any) => {
           messageObserver.onAgendaAssignment(session, item.title, a.assigneeEmail || a.assignee.name, item.order);
         });
+        
+        // Notify for responsible person assignment
+        if (item.responsible && item.responsible.email) {
+          await messageObserver.onAgendaAssignment(
+            session, 
+            item.title, 
+            item.responsible.email, 
+            item.order
+          );
+        }
       });
     res.json(session);
   } catch (err) {
