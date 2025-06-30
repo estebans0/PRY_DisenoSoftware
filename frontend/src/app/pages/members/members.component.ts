@@ -37,11 +37,13 @@ export class MembersComponent implements OnInit {
 
   filteredMembers(): Member[] {
     const q = this.searchQuery.toLowerCase();
-    return this.members.filter(m =>
-      (`${m.firstName} ${m.lastName}`.toLowerCase().includes(q)) ||
-      m.position.toLowerCase().includes(q) ||
-      m.email.toLowerCase().includes(q)
-    );
+    return this.members
+      .filter(m => m.tipoUsuario === 'JDMEMBER') // Only show JDMEMBER users
+      .filter(m =>
+        (`${m.firstName} ${m.lastName}`.toLowerCase().includes(q)) ||
+        m.position.toLowerCase().includes(q) ||
+        m.email.toLowerCase().includes(q)
+      );
   }
 
   emptyForm() {
