@@ -100,12 +100,15 @@ export class SessionNewComponent implements OnInit {
   ngOnInit() {
     this.memberSvc.list().subscribe({
       next: data => {
-        this.members = data.map(m => ({
-          id:       m._id,
-          name:     `${m.firstName} ${m.lastName}`,
-          position: m.position,
-          email:    m.email
-        }));
+        // Filter to only include JDMEMBER users as potential attendees
+        this.members = data
+          .filter(m => m.tipoUsuario === 'JDMEMBER')
+          .map(m => ({
+            id:       m._id,
+            name:     `${m.firstName} ${m.lastName}`,
+            position: m.position,
+            email:    m.email
+          }));
         this.selectedMemberIds = [];
       },
       error: err => console.error('Error fetching members', err)
