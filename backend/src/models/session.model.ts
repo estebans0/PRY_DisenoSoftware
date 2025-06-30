@@ -1,6 +1,12 @@
 import { Schema, model, Document, ObjectId, Types, InferSchemaType } from 'mongoose';
 import { ISessionVisitor, IVisitableSession } from '../Visitor/visitor.interfaces';
 
+// extract the TypeScript type of one agenda‐item
+export type AgendaItemType = InferSchemaType<typeof AgendaItemSchema>;
+export type AttendeeType   = InferSchemaType<typeof AttendeeSchema>;
+export type GuestType      = InferSchemaType<typeof GuestSchema>;
+export type DocType        = InferSchemaType<typeof DocumentSchema>;
+
 // Action interface
 interface IAction {
   TipoAccion: string;
@@ -105,11 +111,11 @@ export interface ISession extends Document, IVisitableSession {
   startTime?:   Date;
   endTime?:     Date;
   createdBy:    { _id: Types.ObjectId; name: string };
-  attendees:    typeof AttendeeSchema[];
+  attendees:    AttendeeType[];
   description?: string;
-  guests:       typeof GuestSchema[];
-  agenda:       typeof AgendaItemSchema[];
-  documents?:   typeof DocumentSchema[];   // <— top-level docs
+  guests:       GuestType[];
+  agenda:       AgendaItemType[];
+  documents?:   DocType[];
 }
 
 const SessionSchema = new Schema<ISession>({
@@ -191,4 +197,3 @@ export {
     AgendaItemSchema,
     
 };
-export type AgendaItemType = InferSchemaType<typeof AgendaItemSchema>;

@@ -11,7 +11,7 @@
     </div>
     <div class="flex gap-2">
       <button
-        [routerLink]="['/sessions', session.id]"
+        [routerLink]="['/sessions', session._id]"
         class="px-4 py-2 border rounded bg-white hover:bg-gray-50
                dark:bg-gray-800 dark:hover:bg-gray-700 dark:border-gray-600 dark:text-gray-200"
       >
@@ -60,8 +60,8 @@
               <label class="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  [checked]="selectedRecipients.includes(a.id)"
-                  (change)="toggleRecipient(a.id)"
+                  [checked]="selectedRecipients.includes(a.email)"
+                  (change)="toggleRecipient(a.email)"
                   class="h-4 w-4 text-blue-600"
                 />
                 <div>
@@ -92,8 +92,8 @@
                 <label class="flex items-center gap-2">
                   <input
                     type="checkbox"
-                    [checked]="selectedGuests.includes(g.id)"
-                    (change)="toggleGuest(g.id)"
+                    [checked]="selectedGuests.includes(g.email)"
+                    (change)="toggleGuest(g.email)"
                     class="h-4 w-4 text-blue-600"
                   />
                   <div>
@@ -154,7 +154,7 @@
         <div class="space-y-2">
           <div class="flex items-center gap-2 dark:text-gray-100">
             <lucide-icon name="Calendar" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
-            <strong>Date:</strong> {{ session.date }}
+            <strong>Date:</strong> {{ session.date | date:'yyyy-MM-dd' }}
           </div>
           <div class="flex items-center gap-2 dark:text-gray-100">
             <lucide-icon name="Clock" class="h-4 w-4 text-gray-500 dark:text-gray-400"></lucide-icon>
@@ -206,14 +206,12 @@
             <label class="block text-sm dark:text-gray-100">Subject (Members)</label>
             <input
               [value]="emailSubject"
-              readonly
               class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
           <div class="space-y-2">
             <label class="block text-sm dark:text-gray-100">Body (Members)</label>
             <textarea
-              readonly
               [value]="memberEmailBody"
               class="w-full h-48 font-mono text-sm border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             ></textarea>
@@ -224,15 +222,13 @@
           <div class="space-y-2">
             <label class="block text-sm dark:text-gray-100">Subject (Guests)</label>
             <input
-              [value]="'Guest Invitation: Board Session #' + session.number + ' — ' + session.date"
-              readonly
+              [value]="emailSubject"
               class="w-full border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             />
           </div>
           <div class="space-y-2">
             <label class="block text-sm dark:text-gray-100">Body (Guests)</label>
             <textarea
-              readonly
               [value]="guestEmailBody"
               class="w-full h-48 font-mono text-sm border rounded p-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
             ></textarea>
@@ -250,8 +246,8 @@
     <div>
       <p class="font-medium dark:text-gray-100">Important</p>
       <p class="text-sm text-gray-600 dark:text-gray-400">
-        This will send notifications to {{ selectedRecipients.length }} members and {{ selectedGuests.length }} guests.  
-      Please review before sending.
+        This will send notifications to {{ selectedRecipients.length }} members and {{ selectedGuests.length }} guests.
+        Please review before sending.
       </p>
     </div>
   </div>

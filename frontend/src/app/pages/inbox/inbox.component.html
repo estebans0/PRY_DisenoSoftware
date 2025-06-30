@@ -1,0 +1,62 @@
+<!-- frontend/src/app/pages/inbox/inbox.component.html -->
+<div class="container mx-auto py-6 space-y-4">
+
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold">My Inbox</h1>
+    <button
+      class="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+      (click)="clearAll()"
+      [disabled]="!inbox.length"
+    >
+      Clear All
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="text-gray-500">Loading…</div>
+  <div *ngIf="error" class="text-red-500">{{ error }}</div>
+  <div *ngIf="!loading && !inbox.length" class="text-gray-600">No messages.</div>
+
+  <div *ngFor="let m of inbox"
+       class="border rounded-lg overflow-hidden bg-white dark:bg-gray-800 cursor-pointer"
+       (click)="toggleExpand(m)"
+  >
+    <!-- summary row -->
+    <div class="flex items-center justify-between px-4 py-3">
+      <div class="flex items-center space-x-2">
+        <!-- dot indicator -->
+        <lucide-icon
+          [name]="m.read ? 'Circle' : 'Circle'"
+          class="h-2 w-2"
+          [ngClass]="m.read ? 'text-gray-400' : 'text-blue-500'"
+        ></lucide-icon>
+        <span
+          class="font-semibold text-gray-800 dark:text-gray-100"
+          [ngClass]="m.read ? 'opacity-70' : ''"
+        >
+          {{ m.subject }}
+        </span>
+      </div>
+      <lucide-icon
+        [name]=" expandedIds.has(m._id) ? 'ChevronUp' : 'ChevronDown' "
+        class="h-4 w-4 text-gray-500 dark:text-gray-400"
+      ></lucide-icon>
+    </div>
+
+    <!-- expanded body -->
+    <div *ngIf="expandedIds.has(m._id)" class="px-4 pb-4 space-y-3">
+      <div class="text-gray-700 dark:text-gray-200 whitespace-pre-wrap">{{ m.body }}</div>
+      <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400">
+        <span>From: {{ m.sender }}</span>
+        <span>{{ m.timestamp | date:'short' }}</span>
+      </div>
+      <div class="flex justify-end">
+        <button
+          class="text-gray-400 hover:text-red-500"
+          (click)="deleteMessage(m, $event)"
+        >
+          <lucide-icon name="Trash2" class="h-5 w-5"/>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

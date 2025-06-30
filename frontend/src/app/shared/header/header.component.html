@@ -1,4 +1,4 @@
-<!-- src/app/components/header/header.component.html -->
+<!-- src/app/shared/header/header.component.html -->
 
 <!-- PUBLIC header (only on /, /login, /register) -->
 <header
@@ -72,11 +72,21 @@
         </a>
         <!-- Session Reports - For JD Members -->
         <a
+          *ngIf="isJDMember"
           routerLink="/session-reports"
           class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
         >
           <lucide-icon name="FileText" class="h-5 w-5"></lucide-icon>
           Session Reports
+        </a>
+        <!-- Inbox - For JD Members -->
+        <a
+          *ngIf="isJDMember"
+          routerLink="/inbox"
+          class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
+        >
+          <lucide-icon name="Inbox" class="h-5 w-5"></lucide-icon>
+          Inbox
         </a>
         <!-- Settings - Available for all users -->
         <a
@@ -123,7 +133,6 @@
           </div>
           <ul class="py-1">
             <li>
-              <!-- Changed to button that calls goToProfile() -->
               <button
                 (click)="goToProfile()"
                 class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
@@ -131,7 +140,6 @@
                 Profile
               </button>
             </li>
-            <!-- Session Reports - Only for JD Members -->
             <li *ngIf="isJDMember">
               <button
                 (click)="goToSessionReports()"
@@ -140,7 +148,14 @@
                 Session Reports
               </button>
             </li>
-            <!-- My Invitations - Only for Administrators -->
+            <li *ngIf="isJDMember">
+              <button
+                (click)="goToInbox()"
+                class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"
+              >
+                Inbox
+              </button>
+            </li>
             <li *ngIf="isAdministrator">
               <a
                 routerLink="/invitations"
@@ -158,7 +173,6 @@
               </a>
             </li>
             <li>
-              <!-- Changed to button that calls logout() -->
               <button
                 (click)="logout()"
                 class="w-full text-left px-4 py-2 hover:bg-gray-100 dark:hover:bg-gray-600"

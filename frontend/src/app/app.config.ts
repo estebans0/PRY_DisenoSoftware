@@ -42,9 +42,9 @@ import {
   ChevronUp,
   Square,
   Camera,
-  // ADD these two for the sessions page
   Search,
-  // (no need for MoreHorizontal unless you end up using the dropdown menu approach)
+  Circle,
+  Inbox
 } from 'lucide-angular';
 
 import { routes } from './app.routes';
@@ -89,6 +89,8 @@ export const appConfig: ApplicationConfig = {
         Square,
         Camera,
         Search,
+        Circle,
+        Inbox
       })
     )
   ]

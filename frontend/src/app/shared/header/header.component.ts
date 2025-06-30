@@ -53,6 +53,11 @@ export class HeaderComponent {
     this.router.navigate(['/session-reports']);
   }
 
+  goToInbox() {
+    this.profileMenu = false;
+    this.router.navigate(['/inbox']);
+  }
+
   /** Log out: clear token + redirect to /login */
   logout() {
     this.authService.logout();

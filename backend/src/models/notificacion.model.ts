@@ -1,24 +1,37 @@
-import { Schema, model, Document, ObjectId} from 'mongoose';
-
+import { Schema, model, Document } from 'mongoose';
 
 export interface Notificacion extends Document {
-  Title: string;
-  SessionNumber: string;
-  date: Date;
-  recipients: string[];
-  type: 'info' | 'warning' | 'error';
-
+  sender:        string;              // e.g. 'SYSTEM'
+  recipient:     string;              // single JD email
+  type:          'info'|'warning'|'error';
+  subject:       string;
+  body:          string;
+  sessionNumber: string;
+  timestamp:     Date;
+  read:          boolean;
+  createdAt?:    Date;
+  updatedAt?:    Date;
 }
 
 const notificacionSchema = new Schema<Notificacion>(
-    {
-        Title: { type: String, required: true, trim: true },
-        SessionNumber: { type: String, required: true, trim: true },
-        date: { type: Date, default: Date.now },
-        recipients: [{ type: String, required: true }],
-        type: { type: String, required: true, enum: ['info', 'warning', 'error'] }
+  {
+    sender:        { type: String, required: true, trim: true },
+    recipient:     { type: String, required: true, index: true },
+    type:          { 
+      type:     String, 
+      required: true, 
+      enum:     ['info', 'warning', 'error'] 
     },
-    { timestamps: true }
-)
+    subject:       { type: String, required: true, trim: true },
+    body:          { type: String, required: true, trim: true },
+    sessionNumber: { type: String, required: true, trim: true },
+    timestamp:     { type: Date,   default: Date.now },
+    read:          { type: Boolean, default: false }
+  },
+  { timestamps: true }
+);
 
-export const NotificacionModel = model<Notificacion>('Notificacion', notificacionSchema);
+export const NotificacionModel = model<Notificacion>(
+  'Notificacion',
+  notificacionSchema
+);

@@ -118,4 +118,17 @@ export class SessionService {
       { agenda }
     );
   }
+
+  /** Send a meeting notice to confirmed attendees + guests */
+  notifySession(sessionId: string): Observable<{
+    success:   boolean;
+    notified:  number;
+    recipients: string[];
+  }> {
+    return this.http.post<{
+      success:   boolean;
+      notified:  number;
+      recipients: string[];
+    }>(`${this.base}/${sessionId}/notify`, {});
+  }
 }

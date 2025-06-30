@@ -12,6 +12,9 @@ router.get('/:id',           SessionController.getOne);
 router.put('/:id',           SessionController.update);
 router.delete('/:id',        SessionController.remove);
 
+// POST /sessions/:id/notify
+router.post('/:id/notify', SessionController.notifySession);
+
 // Start / End
 router.post('/:id/start',    SessionController.startSession);
 router.post('/:id/end',      SessionController.endSession);

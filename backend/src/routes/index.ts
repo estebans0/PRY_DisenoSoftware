@@ -5,10 +5,14 @@ import * as settingsCtrl from '../controllers/settings.controller';
 import userRouter from './user.routes';
 import sessionRouter from './session.routes';
 import jdMemberRoutes from './JDMember.routes';
+import messageRoutes from './message.routes';
 import multer from 'multer';
 const upload = multer({ dest: 'uploads/' });
 
 const router = Router();
+
+// Use message routes
+router.use('/messages', messageRoutes);
 
 // Use session routes
 router.use('/sessions', sessionRoutes);

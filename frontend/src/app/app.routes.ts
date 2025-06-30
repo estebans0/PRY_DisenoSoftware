@@ -4,6 +4,7 @@ import { Routes } from '@angular/router';
 import { AuthGuard } from './guards/auth.guard';
 import { HomeComponent } from './pages/home/home.component';
 import { LoginComponent } from './pages/login/login.component';
+import { InboxComponent } from './pages/inbox/inbox.component';
 import { ProfileComponent } from './pages/profile/profile.component';
 import { MembersComponent } from './pages/members/members.component';
 import { SettingsComponent } from './pages/settings/settings.component';
@@ -22,6 +23,7 @@ export const routes: Routes = [
   { path: '',         component: HomeComponent },
   { path: 'login',    component: LoginComponent },
   { path: 'register', component: RegisterComponent },
+  { path: 'inbox',    component: InboxComponent, canActivate: [AuthGuard] },
 
   { path: 'members',  component: MembersComponent,  canActivate: [AuthGuard] },
   { path: 'settings', component: SettingsComponent, canActivate: [AuthGuard] },

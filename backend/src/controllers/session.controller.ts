@@ -1,4 +1,3 @@
-
 // backend/src/controllers/session.controller.ts
 import { Request, Response, NextFunction, RequestHandler } from 'express';
 import { Types } from 'mongoose';
@@ -8,6 +7,10 @@ import fs from 'fs';
 
 import { Session } from '../models/session.model';
 import { SessionQueryService } from '../services/services.visitor';
+import { MessageObserver } from '../services/MessageObserver';
+
+// —── Setup Observer ─────────────────────────────────────────
+const messageObserver = new MessageObserver();
 
 // —── Setup Multer upload storage ───────────────────────────────────────────────
 const uploadDir = path.join(__dirname, '../../uploads');
@@ -125,6 +128,7 @@ function sanitizeAgenda(rawAgenda: any[]): any[] {
     title:         item.title,
     duration:      item.duration,
     presenter:     item.presenter,
+    tipoPunto:     item.tipoPunto,
     estimatedTime: item.estimatedTime,
     pro:           item.pro,
     against:       item.against,
@@ -140,28 +144,89 @@ function sanitizeAgenda(rawAgenda: any[]): any[] {
   }));
 }
 
-// — POST /sessions/:id/end —
-export async function endSession(
+/**
+ * POST /sessions/:id/end
+ * Close the session, save the final agenda, AND fire assignment notices
+ */
+export const endSession: RequestHandler = async (req, res, next) => {
+  try {
+    // 1) sanitize + persist final agenda
+    const sanitized = sanitizeAgenda(req.body.agenda || []);
+    const session = await Session.findByIdAndUpdate(
+      req.params.id,
+      {
+        status:  'Completed',
+        endTime: new Date(),
+        agenda:  sanitized
+      },
+      { new: true, runValidators: true, context: 'query' }
+    );
+
+    if (!session) {
+      res.sendStatus(404);
+      return;
+    }
+
+    // 2) automatically notify every 'fondo estrategia y desarrollo' assignee
+    for (const item of session.agenda) {
+      if (
+        item.tipoPunto === 'fondo estrategia y desarrollo' &&
+        Array.isArray(item.actions)
+      ) {
+        for (const action of item.actions) {
+          // find the email for this assignee
+          const attendee = session.attendees.find(a => a.name === action.assignee.name);
+          const assigneeEmail = attendee?.email ?? action.assignee.name;
+
+          await messageObserver.onAgendaAssignment(
+            session,
+            item.title,
+            assigneeEmail
+          );
+        }
+      }
+    }
+
+    // 3) return the updated session
+    res.json(session);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
+ * POST /sessions/:id/notify
+ * Send a meeting notice to all confirmed attendees + guests
+ */
+export async function notifySession(
   req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> {
   try {
-    const sanitized = sanitizeAgenda(req.body.agenda || []);
-    const session = await Session.findByIdAndUpdate(
-      req.params.id,
-      {
-        status:    'Completed',
-        endTime:   new Date(),
-        agenda:    sanitized
-      },
-      { new: true, runValidators: true, context: 'query' }
-    );
+    const session: any = await Session.findById(req.params.id);
     if (!session) {
-      res.sendStatus(404);
+      res.status(404).json({ message: 'Session not found' });
       return;
     }
-    res.json(session);
+
+    const memberEmails = (session.attendees || [])
+      .filter((a: any) => a.status === 'Confirmed')
+      .map((a: any) => a.email);
+    const guestEmails = (session.guests || [])
+      .map((g: any) => g.email);
+
+    const recipients = Array.from(new Set([...memberEmails, ...guestEmails]));
+    if (recipients.length === 0) {
+      res.status(400).json({ message: 'No confirmed attendees or guests to notify.' });
+      return;
+    }
+
+    // fire off the observer
+    await messageObserver.onMeetingNotice(session, recipients);
+
+    res.json({ success: true, notified: recipients.length, recipients });
+    return;
   } catch (err) {
     next(err);
   }
@@ -212,6 +277,14 @@ export async function updateAgenda(
     }
     session.agenda = sanitizeAgenda(req.body.agenda || []);
     await session.save();
+    // Auto‐notify for each "fondo estrategia y desarrollo" assignment
+    session.agenda
+      .filter((i: any) => i.tipoPunto === 'fondo estrategia y desarrollo')
+      .forEach((item: any) => {
+        (item.actions || []).forEach((a: any) => {
+          messageObserver.onAgendaAssignment(session, item.title, a.assignee.name /*or email*/);
+        });
+      });
     res.json(session);
   } catch (err) {
     next(err);
