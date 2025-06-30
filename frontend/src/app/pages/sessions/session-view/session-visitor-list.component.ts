@@ -33,6 +33,9 @@ export class SessionVisitorListComponent implements OnInit {
   // Current user
   currentUser: any;
 
+  /** track which session details are expanded */
+  expandedSessionIds = new Set<string>();
+
   constructor(
     private sessionService: SessionService,
     private authService: AuthService
@@ -170,5 +173,32 @@ export class SessionVisitorListComponent implements OnInit {
     }
     // Simplified quorum logic - adjust as needed
     return s.quorum || 'Pending';
+  }
+
+  toggleSessionExpansion(sessionId: string) {
+    if (this.expandedSessionIds.has(sessionId)) {
+      this.expandedSessionIds.delete(sessionId);
+    } else {
+      this.expandedSessionIds.add(sessionId);
+    }
+  }
+
+  isSessionExpanded(sessionId: string): boolean {
+    return this.expandedSessionIds.has(sessionId);
+  }
+
+  getSessionDetailsForUser(session: any): any {
+    if (this.viewType === 'presenter') {
+      return {
+        type: 'presenter',
+        items: this.getPresenterItems(session)
+      };
+    } else if (this.viewType === 'responsible') {
+      return {
+        type: 'responsible',
+        items: session.items || []
+      };
+    }
+    return { type: 'unknown', items: [] };
   }
 }
