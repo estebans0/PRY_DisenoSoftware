@@ -87,6 +87,12 @@ const AgendaItemSchema = new Schema({
     type: String,
     enum: ['Approved','Rejected','Deferred'],
     default: null
+  },
+
+  // ─── RESPONSIBLE PERSON ─── for 'fondo estrategia y desarrollo' items
+  responsible: {
+    name:   { type: String },
+    email:  { type: String }
   }
 
 }, { _id: true });
