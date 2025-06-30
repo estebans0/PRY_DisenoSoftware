@@ -250,6 +250,37 @@
           </div>
         </div>
 
+        <!-- Responsible Person Assignment - Only shown for 'fondo estrategia y desarrollo' items -->
+        <div *ngIf="item.tipoPunto === 'fondo estrategia y desarrollo'">
+          <h4 class="font-medium">Responsible Person Assignment</h4>
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm mb-1">Assign Responsible Person</label>
+              <select
+                [(ngModel)]="responsibleSelections[item.id]"
+                [disabled]="sessionEnded"
+                class="w-full border rounded p-2"
+                (change)="assignResponsible(item.id)"
+              >
+                <option value="">Select responsible person</option>
+                <option 
+                  *ngFor="let a of attendees.filter(att => att.status === 'Present')" 
+                  [value]="a.email"
+                >
+                  {{ a.name }} ({{ a.email }})
+                </option>
+              </select>
+            </div>
+            <div *ngIf="item.responsible" class="flex items-center">
+              <div class="text-sm">
+                <span class="text-gray-600">Currently assigned to:</span><br>
+                <span class="font-medium">{{ item.responsible.name }}</span>
+                <span class="text-gray-500">({{ item.responsible.email }})</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Tasks -->
         <div>
           <h4 class="font-medium">Assign Tasks</h4>

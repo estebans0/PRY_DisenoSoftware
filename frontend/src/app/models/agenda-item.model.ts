@@ -26,6 +26,10 @@ export interface StrategicAgendaItem extends BaseAgendaItem {
   tipoPunto: 'fondo estrategia y desarrollo';
   requiresVoting: false;
   strategicCategory?: string;
+  responsible?: {
+    name: string;
+    email: string;
+  };
 }
 
 export interface MiscellaneousAgendaItem extends BaseAgendaItem {

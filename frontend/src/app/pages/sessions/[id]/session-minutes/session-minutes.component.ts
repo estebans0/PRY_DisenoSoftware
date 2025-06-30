@@ -35,6 +35,11 @@ interface AgendaItem {
   duration: number;
   actualDuration: number;
   notes: string;                                        // ← now actually populated
+  tipoPunto: string;                                    // ← add agenda item type
+  responsible?: {                                       // ← add responsible person
+    name: string;
+    email: string;
+  };
   voting: { inFavor: number; against: number; abstain: number; result: string };
   tasks: Task[];
   supportingDocuments: SupportingDocument[];
@@ -161,6 +166,8 @@ export class SessionMinutesComponent implements OnInit {
             duration:         item.duration,
             actualDuration:   item.estimatedTime,
             notes:            item.notes || '',             // ← HERE we pull in the saved notes
+            tipoPunto:        item.tipoPunto || 'informativa', // ← add agenda item type
+            responsible:      item.responsible || null,     // ← add responsible person
             voting: {
               inFavor: inFav,
               against: agn,
