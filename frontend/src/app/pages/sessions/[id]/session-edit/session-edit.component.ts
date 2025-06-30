@@ -59,8 +59,25 @@ export class SessionEditComponent implements OnInit {
   // ─── Members & Attendees ───
   members: MemberOption[]     = [];
   selectedMemberIds: string[] = [];
-  get attendeeOptions() {
-    return this.members.filter(m => this.selectedMemberIds.includes(m.id));
+  
+  /** 
+   * Only those members that were checked in the Attendees tab plus guests
+   */
+  get attendeeOptions(): MemberOption[] {
+    // Start with selected members
+    const memberOptions = this.members
+      .filter(m => this.selectedMemberIds.includes(m.id));
+    
+    // Add guests with proper formatting
+    const guestOptions = this.guests.map(g => ({
+      id: `guest-${g.id}`,
+      name: g.name || `Guest (${g.email})`,
+      position: 'Guest',
+      email: g.email
+    }));
+    
+    // Return combined list
+    return [...memberOptions, ...guestOptions];
   }
 
   // ─── Guests ───
@@ -98,12 +115,15 @@ export class SessionEditComponent implements OnInit {
     // first load members, then session
     this.memberSvc.list().pipe(
       switchMap(members => {
-        this.members = members.map(m => ({
-          id:       m._id!,
-          name:     `${m.firstName} ${m.lastName}`,
-          position: m.position,
-          email:    m.email
-        }));
+        // Filter to only include JDMEMBER users as potential attendees
+        this.members = members
+          .filter(m => m.tipoUsuario === 'JDMEMBER')
+          .map(m => ({
+            id:       m._id!,
+            name:     `${m.firstName} ${m.lastName}`,
+            position: m.position,
+            email:    m.email
+          }));
         return this.sessionSvc.getSession(this.sessionId);
       }),
       catchError(err => {
