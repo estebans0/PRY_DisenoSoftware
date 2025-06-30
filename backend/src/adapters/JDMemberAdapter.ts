@@ -15,16 +15,23 @@ export class JDMemberAdapter {
     }
 
     try {
+      console.log('Adapting user:', { email: user.email, firstName: user.firstName, lastName: user.lastName });
+      
       // Check if JDMember already exists with this email
       const existingJDMember = await JDMemberModel.findOne({ email: user.email });
+      console.log('Existing JDMember found:', existingJDMember ? 'YES' : 'NO');
       
       if (existingJDMember) {
+        console.log('Updating existing JDMember');
         // Update existing JDMember
         existingJDMember.firstName = user.firstName;
         existingJDMember.lastName = user.lastName;
         existingJDMember.position = user.position;
-        return await existingJDMember.save();
+        const updated = await existingJDMember.save();
+        console.log('Updated JDMember:', updated);
+        return updated;
       } else {
+        console.log('Creating new JDMember');
         // Create new JDMember
         const newJDMember = new JDMemberModel({
           firstName: user.firstName,
@@ -32,7 +39,9 @@ export class JDMemberAdapter {
           email: user.email,
           position: user.position
         });
-        return await newJDMember.save();
+        const created = await newJDMember.save();
+        console.log('Created JDMember:', created);
+        return created;
       }
     } catch (error) {
       console.error('Error adapting User to JDMember:', error);
