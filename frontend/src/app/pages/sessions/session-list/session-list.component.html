@@ -2,8 +2,15 @@
 <div class="container mx-auto py-6 space-y-6">
   <!-- header & new session -->
   <div class="flex items-center justify-between">
-    <h1 class="text-3xl font-bold">Sessions</h1>
+    <div>
+      <h1 class="text-3xl font-bold">Sessions</h1>
+      <p *ngIf="isJDMember()" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
+        <lucide-icon name="Info" class="h-4 w-4 inline mr-1"></lucide-icon>
+        View-only access - Contact administrator for session management
+      </p>
+    </div>
     <a
+      *ngIf="isAdmin()"
       routerLink="/sessions/new"
       class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
     >
@@ -104,7 +111,7 @@
 
             <td class="px-4 py-2">
               <div class="flex items-center gap-2">
-                <!-- View -->
+                <!-- View (available to all users) -->
                 <a
                   [routerLink]="['/sessions', s._id]"
                   class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
@@ -112,32 +119,47 @@
                 >
                   <lucide-icon name="Eye" class="h-4 w-4 text-gray-600 dark:text-gray-300"></lucide-icon>
                 </a>
-                <!-- Edit / Send / Start -->
-                <a
-                  *ngIf="s.status==='Scheduled'"
-                  [routerLink]="['/sessions', s._id, 'edit']"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Edit"
-                >
-                  <lucide-icon name="Edit" class="h-4 w-4 text-blue-600"></lucide-icon>
-                </a>
-                <a
-                  *ngIf="s.status==='Scheduled'"
-                  [routerLink]="['/sessions', s._id, 'notify']"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Send Notice"
-                >
-                  <lucide-icon name="Send" class="h-4 w-4 text-green-600"></lucide-icon>
-                </a>
-                <a
-                  *ngIf="s.status==='Scheduled'"
-                  [routerLink]="['/sessions', s._id, 'start']"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Start Session"
-                >
-                  <lucide-icon name="Play" class="h-4 w-4 text-amber-600"></lucide-icon>
-                </a>
-                <!-- View Minutes -->
+
+                <!-- Admin-only actions -->
+                <ng-container *ngIf="isAdmin()">
+                  <!-- Edit -->
+                  <a
+                    *ngIf="s.status==='Scheduled'"
+                    [routerLink]="['/sessions', s._id, 'edit']"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Edit"
+                  >
+                    <lucide-icon name="Edit" class="h-4 w-4 text-blue-600"></lucide-icon>
+                  </a>
+                  <!-- Send Notice -->
+                  <a
+                    *ngIf="s.status==='Scheduled' && !s.notified"
+                    [routerLink]="['/sessions', s._id, 'notify']"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Send Notice"
+                  >
+                    <lucide-icon name="Send" class="h-4 w-4 text-green-600"></lucide-icon>
+                  </a>
+                  <!-- Start Session -->
+                  <a
+                    *ngIf="s.status==='Scheduled'"
+                    [routerLink]="['/sessions', s._id, 'start']"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Start Session"
+                  >
+                    <lucide-icon name="Play" class="h-4 w-4 text-amber-600"></lucide-icon>
+                  </a>
+                  <!-- Delete -->
+                  <button
+                    (click)="openDelete(s._id!)"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Delete Session"
+                  >
+                    <lucide-icon name="Trash2" class="h-4 w-4 text-red-600"></lucide-icon>
+                  </button>
+                </ng-container>
+
+                <!-- View Minutes (available to all users) -->
                 <a
                   *ngIf="s.status==='Completed'"
                   [routerLink]="['/sessions', s._id, 'minutes']"
@@ -146,14 +168,6 @@
                 >
                   <lucide-icon name="FileText" class="h-4 w-4 text-indigo-600"></lucide-icon>
                 </a>
-                <!-- Delete -->
-                <button
-                  (click)="openDelete(s._id!)"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Delete Session"
-                >
-                  <lucide-icon name="Trash2" class="h-4 w-4 text-red-600"></lucide-icon>
-                </button>
               </div>
             </td>
           </tr>

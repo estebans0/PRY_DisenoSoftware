@@ -9,6 +9,7 @@ import { forkJoin }                from 'rxjs';
 import { SessionService, Session } from '../../../services/session.service';
 import { SettingsService }         from '../../../services/settings.service';
 import { MemberService }           from '../../../services/member.service';
+import { AuthService }             from '../../../services/auth.service';
 
 @Component({
   selector: 'app-session-list',
@@ -42,7 +43,8 @@ export class SessionListComponent implements OnInit {
   constructor(
     private sessionsSvc: SessionService,
     private settingsSvc: SettingsService,
-    private memberSvc: MemberService
+    private memberSvc: MemberService,
+    private authSvc: AuthService
   ) {}
 
   ngOnInit() {
@@ -137,5 +139,21 @@ export class SessionListComponent implements OnInit {
     const actual = Array.isArray(s.attendees) ? s.attendees.length : 0;
     const required = Math.ceil(this.totalMembers * this.quorumPercentage / 100);
     return actual >= required ? 'Achieved' : 'Not Achieved';
+  }
+
+  /**
+   * Check if the current user is a JDMEMBER (limited actions)
+   */
+  isJDMember(): boolean {
+    const currentUser = this.authSvc.getCurrentUser();
+    return currentUser?.tipoUsuario === 'JDMEMBER';
+  }
+
+  /**
+   * Check if the current user is an ADMINISTRADOR (full access)
+   */
+  isAdmin(): boolean {
+    const currentUser = this.authSvc.getCurrentUser();
+    return currentUser?.tipoUsuario === 'ADMINISTRADOR';
   }
 }
