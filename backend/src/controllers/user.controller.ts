@@ -71,11 +71,10 @@ export const create: RequestHandler = async (req, res, next) => {
  */
 export const update: RequestHandler = async (req, res, next) => {
   try {
-    // Store the original email before updating
-    const originalEmail = req.params.email;
+    const oldEmail = req.params.email; // Store the old email before update
     
     const updated = await UserModel.findOneAndUpdate(
-      { email: originalEmail },
+      { email: oldEmail },
       req.body,
       { new: true, runValidators: true }
     );
@@ -85,10 +84,9 @@ export const update: RequestHandler = async (req, res, next) => {
       return;
     }
     
-    // Use the adapter to update JDMember if applicable
-    // Pass the original email so the adapter can find the existing JDMember record
+    // Use the adapter to update JDMember if applicable, passing the old email
     if (updated.tipoUsuario === 'JDMEMBER') {
-      await JDMemberAdapter.adaptUser(updated, originalEmail);
+      await JDMemberAdapter.adaptUser(updated, oldEmail);
     }
     
     res.json(updated);

@@ -8,27 +8,25 @@ import { JDMember, JDMemberModel } from '../models/JDMember.model';
 export class JDMemberAdapter {
   /**
    * Adapts User data to JDMember format and creates/updates JDMember
-   * @param user The user data to adapt
-   * @param originalEmail The original email before any updates (used to find existing JDMember)
    */
-  public static async adaptUser(user: User, originalEmail?: string): Promise<JDMember | null> {
+  public static async adaptUser(user: User, oldEmail?: string): Promise<JDMember | null> {
     if (user.tipoUsuario !== 'JDMEMBER') {
       return null;
     }
 
     try {
-      console.log('Adapting user:', { 
-        email: user.email, 
-        originalEmail: originalEmail,
-        firstName: user.firstName, 
-        lastName: user.lastName 
-      });
+      console.log('Adapting user:', { email: user.email, firstName: user.firstName, lastName: user.lastName, oldEmail });
       
-      // Use originalEmail if provided (for updates), otherwise use current email
-      const emailToSearch = originalEmail || user.email;
+      // If oldEmail is provided, this is an update operation - search by old email first
+      let existingJDMember = null;
+      if (oldEmail && oldEmail !== user.email) {
+        console.log('Email changed, searching by old email:', oldEmail);
+        existingJDMember = await JDMemberModel.findOne({ email: oldEmail });
+      } else {
+        // Check if JDMember already exists with current email
+        existingJDMember = await JDMemberModel.findOne({ email: user.email });
+      }
       
-      // Check if JDMember already exists with the search email
-      const existingJDMember = await JDMemberModel.findOne({ email: emailToSearch });
       console.log('Existing JDMember found:', existingJDMember ? 'YES' : 'NO');
       
       if (existingJDMember) {
@@ -62,17 +60,12 @@ export class JDMemberAdapter {
 
   /**
    * Removes the corresponding JDMember when a User is deleted
-   * @param user The user to remove
-   * @param originalEmail The original email if it was changed (used to find existing JDMember)
    */
-  public static async removeJDMember(user: User, originalEmail?: string): Promise<void> {
+  public static async removeJDMember(user: User): Promise<void> {
     if (user.tipoUsuario !== 'JDMEMBER') return;
 
     try {
-      // Use originalEmail if provided, otherwise use current email
-      const emailToSearch = originalEmail || user.email;
-      await JDMemberModel.findOneAndDelete({ email: emailToSearch });
-      console.log('Removed JDMember with email:', emailToSearch);
+      await JDMemberModel.findOneAndDelete({ email: user.email });
     } catch (error) {
       console.error('Error removing JDMember:', error);
     }
