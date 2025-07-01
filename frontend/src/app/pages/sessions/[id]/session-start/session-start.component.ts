@@ -448,6 +448,10 @@ export class SessionStartComponent implements OnInit, OnDestroy {
       : this.agenda.find(i => i.id === this.activeItem);
   }
 
+  public get presentAttendees(): Attendee[] {
+    return this.attendees.filter(a => a.status === 'Present');
+  }
+
   showVotingSection(item: any): boolean {
     return item && item.tipoPunto === 'Aprobaciones';
   }

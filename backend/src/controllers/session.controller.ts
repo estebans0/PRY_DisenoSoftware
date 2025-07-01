@@ -231,34 +231,18 @@ export const endSession: RequestHandler = async (req, res, next) => {
     await session.save();
 
     // 4) “Fondo estrategia y desarrollo” assignment notices
+    //    → exactly one notification per item with a responsible.email
     for (const item of session.agenda) {
-      if (item.tipoPunto === 'fondo estrategia y desarrollo') {
-        // Notify for action assignments
-        if (Array.isArray(item.actions)) {
-          for (const action of item.actions) {
-            // find attendee by name so we get a real email
-            const attendee = session.attendees.find(
-              (a: any) => a.name === action.assignee.name
-            );
-            const assigneeEmail = attendee?.email ?? action.assignee.name;
-            await messageObserver.onAgendaAssignment(
-              session,
-              item.title,
-              assigneeEmail,
-              item.order
-            );
-          }
-        }
-        
-        // Notify for responsible person assignment
-        if (item.responsible && item.responsible.email) {
-          await messageObserver.onAgendaAssignment(
-            session,
-            item.title,
-            item.responsible.email,
-            item.order
-          );
-        }
+      if (
+        item.tipoPunto === 'fondo estrategia y desarrollo' &&
+        item.responsible?.email
+      ) {
+        await messageObserver.onAgendaAssignment(
+          session,
+          item.title,
+          item.responsible.email,
+          item.order
+        );
       }
     }
 
@@ -273,7 +257,6 @@ export const endSession: RequestHandler = async (req, res, next) => {
 
     // 6) Finally, send back the updated session
     res.json(session);
-    return;
   } catch (err) {
     next(err);
   }
@@ -343,7 +326,7 @@ export async function addAgendaItems(
   }
 }
 
-// — PUT /sessions/:id/agenda —
+// — PUT /sessions/:id/agenda —──────────────────────────────────
 export async function updateAgenda(
   req: Request,
   res: Response,
@@ -359,42 +342,26 @@ export async function updateAgenda(
       res.sendStatus(404);
       return;
     }
-    
+
     // Create a temporary session object for validation
     const tempSessionData = {
       attendees: session.attendees,
       agenda: req.body.agenda || []
     };
-    
+
     // Validate responsible field
     const validation = validateResponsibleField(tempSessionData);
     if (!validation.isValid) {
       res.status(400).json({ message: validation.error });
       return;
     }
-    
+
+    // Apply the updated agenda and save
     session.agenda = sanitizeAgenda(req.body.agenda || []);
     await session.save();
-    
-    // Auto‐notify for each "fondo estrategia y desarrollo" item
-    session.agenda
-      .filter((i: any) => i.tipoPunto === 'fondo estrategia y desarrollo')
-      .forEach(async (item: any) => {
-        // Notify for action assignments
-        (item.actions || []).forEach((a: any) => {
-          messageObserver.onAgendaAssignment(session, item.title, a.assigneeEmail || a.assignee.name, item.order);
-        });
-        
-        // Notify for responsible person assignment
-        if (item.responsible && item.responsible.email) {
-          await messageObserver.onAgendaAssignment(
-            session, 
-            item.title, 
-            item.responsible.email, 
-            item.order
-          );
-        }
-      });
+
+    // ← No notifications here any more
+
     res.json(session);
   } catch (err) {
     next(err);
