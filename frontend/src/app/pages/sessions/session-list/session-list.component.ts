@@ -9,6 +9,7 @@ import { forkJoin }                from 'rxjs';
 import { SessionService, Session } from '../../../services/session.service';
 import { SettingsService }         from '../../../services/settings.service';
 import { MemberService }           from '../../../services/member.service';
+import { AuthService }             from '../../../services/auth.service';
 
 @Component({
   selector: 'app-session-list',
@@ -26,10 +27,14 @@ export class SessionListComponent implements OnInit {
   sessions: Session[] = [];
   loading = true;
 
-  // filters
+  // text filters
   searchQuery = '';
   statusFilter: 'all' | 'scheduled' | 'in progress' | 'completed' | 'cancelled' = 'all';
   typeFilter:   'all' | 'ordinary' | 'extraordinary' = 'all';
+
+  // date‐range filters
+  fromDate: string = '';
+  toDate:   string = '';
 
   // delete‐dialog state
   isDeleteOpen  = false;
@@ -42,7 +47,8 @@ export class SessionListComponent implements OnInit {
   constructor(
     private sessionsSvc: SessionService,
     private settingsSvc: SettingsService,
-    private memberSvc: MemberService
+    private memberSvc: MemberService,
+    private authService: AuthService
   ) {}
 
   ngOnInit() {
@@ -65,21 +71,56 @@ export class SessionListComponent implements OnInit {
     });
   }
 
+  /** Only Administrators can manage sessions */
+  get isAdministrator(): boolean {
+    const u = this.authService.getCurrentUser();
+    return u?.tipoUsuario === 'ADMINISTRADOR';
+  }
+
+  /** JD Members can only view/report, but not edit/delete */
+  get isJDMember(): boolean {
+    const u = this.authService.getCurrentUser();
+    return u?.tipoUsuario === 'JDMEMBER';
+  }
+
+  /**
+   * Apply search, status, type and now date‐range ("fromDate" / "toDate") filters
+   */
   get filteredSessions(): Session[] {
-    const q = this.searchQuery.toLowerCase();
-    return this.sessions.filter(s => {
-      const matchesSearch =
-        s.number.toLowerCase().includes(q) ||
-        s.type.toLowerCase().includes(q) ||
-        s.date.includes(this.searchQuery);
-      const matchesStatus =
+    const q = this.searchQuery.trim().toLowerCase();
+
+    return this.sessions
+      // 1) Search text match
+      .filter(s => {
+        const inText =
+          s.number.toLowerCase().includes(q) ||
+          s.type.toLowerCase().includes(q) ||
+          s.date.includes(this.searchQuery);
+        return inText;
+      })
+      // 2) Status
+      .filter(s =>
         this.statusFilter === 'all' ||
-        s.status.toLowerCase() === this.statusFilter;
-      const matchesType =
+        s.status.toLowerCase() === this.statusFilter
+      )
+      // 3) Type
+      .filter(s =>
         this.typeFilter === 'all' ||
-        s.type.toLowerCase() === this.typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
-    });
+        s.type.toLowerCase() === this.typeFilter
+      )
+      // 4) From‐Date
+      .filter(s => {
+        if (!this.fromDate) return true;
+        return new Date(s.date) >= new Date(this.fromDate);
+      })
+      // 5) To‐Date
+      .filter(s => {
+        if (!this.toDate) return true;
+        // add one day so that selecting the same day includes it
+        const to = new Date(this.toDate);
+        to.setDate(to.getDate() + 1);
+        return new Date(s.date) < to;
+      });
   }
 
   badgeClass(status: string): string {
@@ -133,8 +174,7 @@ export class SessionListComponent implements OnInit {
     if (s.status.toLowerCase() === 'scheduled') {
       return 'Pending';
     }
-    // count attendees array length
-    const actual = Array.isArray(s.attendees) ? s.attendees.length : 0;
+    const actual   = Array.isArray(s.attendees) ? s.attendees.length : 0;
     const required = Math.ceil(this.totalMembers * this.quorumPercentage / 100);
     return actual >= required ? 'Achieved' : 'Not Achieved';
   }

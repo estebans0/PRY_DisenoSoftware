@@ -614,52 +614,50 @@ export const getSessionsByPresenter: RequestHandler = async (req, res, next) => 
   }
 };
 
+// —── GET /sessions/responsible/:memberName ────────────────────────────────────
 export const getResponsiblePoints: RequestHandler = async (req, res, next) => {
   try {
     const memberName = req.params.memberName;
-    
-    if (!memberName) {
-      res.status(400).json({ 
-        success: false,
-        message: 'Member name is required' 
-      });
+    if (!memberName || !memberName.trim()) {
+      res
+        .status(400)
+        .json({ success: false, message: 'Member name is required' });
       return;
     }
 
-    // Buscar puntos de agenda donde el miembro es responsable
-    const results = await queryService.getResponsiblePoints(memberName);
+    // Fetch via visitor
+    const rawResults = await queryService.getResponsiblePoints(memberName);
 
-    if (results.length === 0) {
-      res.status(404).json({
-        success: true,
-        message: 'No agenda items found for this responsible member',
-        data: []
-      });
-      return;
-    }
-
-    // Formatear respuesta
-    const response = {
-      success: true,
-      count: results.length,
-      data: results.map(result => ({
-        sessionId: result.session._id,
-        sessionNumber: result.session.number,
-        date: result.session.date,
-        agendaItems: result.items.map(item => ({
-          itemId: item._id,
-          title: item.title,
-          presenter: item.presenter,
-          actions: item.actions.map(action => ({
-            actionId: action._id,
-            description: action.description,
-            dueDate: action.dueDate
-          }))
-        }))
+    // Map into our response shape
+    const data = rawResults.map(({ session, items }) => ({
+      sessionId:     session._id,
+      sessionNumber: session.number,
+      date:          session.date,
+      time:          session.time,
+      location:      session.location,
+      modality:      session.modality,
+      type:          session.type,
+      status:        session.status,
+      quorum:        session.quorum,
+      items: items.map(item => ({
+        itemId:      item._id,
+        order:       item.order,
+        title:       item.title,
+        presenter:   item.presenter,
+        tipoPunto:   item.tipoPunto,
+        notes:       item.notes,
+        decision:    item.decision,
+        responsible: item.responsible,
+        actions:     item.actions,
+        documents:   item.documents
       }))
-    };
+    }));
 
-    res.json(response);
+    res.json({
+      success: true,
+      count:   data.length,
+      data
+    });
   } catch (err) {
     next(err);
   }

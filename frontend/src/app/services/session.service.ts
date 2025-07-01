@@ -102,8 +102,10 @@ export class SessionService {
     return this.http.get<Session[]>(`${this.base}/presenter/${email}`);
   }
   /** Get all sessions where the user is responsible for a point. */
-  getResponsiblePoints(email: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.base}/responsible/${email}`);
+  getResponsiblePoints(name: string): Observable<{ session: any; items: any[] }[]> {
+    return this.http.get<{ session: any; items: any[] }[]>(
+      `${this.base}/responsible/${encodeURIComponent(name)}`
+    );
   }
   /** Get all sessions where the user is absent. */
   getAbsentSessions(email: string): Observable<Session[]> {

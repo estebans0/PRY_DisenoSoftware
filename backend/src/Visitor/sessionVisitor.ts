@@ -38,66 +38,45 @@ export class SessionsByPresenterVisitor implements ISessionVisitor {
     }
 }
 
+/**
+ * NEW: only picks up those
+ * 'fondo estrategia y desarrollo' items
+ * where item.responsible.name === responsibleName
+ */
 export class ResponsiblePointsVisitor implements ISessionVisitor {
-    private results: Array<{
-        session: ISession & Document;
-        items: Array<{
-            order: number;
-            title: string;
-            presenter: string;
-            actions?: Array<{
-                description: string;
-                assignee: {
-                    _id: Types.ObjectId;
-                    name: string;
-                };
-                dueDate?: Date;
-            }>;
-        }>;
-    }> = [];
-    
-    constructor(private responsibleName: string) {}
+  private results: Array<{
+    session: ISession & Document;
+    items: AgendaItemType[];
+  }> = [];
 
-    async visitSession(session: ISession & Document): Promise<void> {
-        // Definimos el tipo completo del item de agenda
-        type AgendaItem = {
-            order: number;
-            title: string;
-            presenter: string;
-            actions?: Array<{
-                description: string;
-                assignee: {
-                    _id: Types.ObjectId;
-                    name: string;
-                };
-                dueDate?: Date;
-            }>;
-        };
-
-        // Conversión segura de tipos
-        const agendaItems = session.agenda as unknown as AgendaItem[];
-
-        const responsibleItems = agendaItems.filter(item => {
-            return item.actions?.some(action => 
-                action.assignee.name === this.responsibleName
-            );
-        });
-        
-        if (responsibleItems.length > 0) {
-            this.results.push({
-                session,
-                items: responsibleItems
-            });
-        }
+  constructor(private responsibleName: string) {
+    if (!responsibleName.trim()) {
+      throw new Error("Valid responsible name is required");
     }
+  }
 
-    async visitAgendaItem(item: any): Promise<void> {
-        // No necesario para este visitor
-    }
+  async visitSession(session: ISession & Document): Promise<void> {
+    // Cast to the TS‐extracted type
+    const agendaItems = session.agenda as AgendaItemType[];
 
-    getResults() {
-        return this.results;
+    const responsibleItems = agendaItems.filter(item =>
+      // only fondo‐type AND exactly this user
+      item.tipoPunto === "fondo estrategia y desarrollo" &&
+      item.responsible?.name === this.responsibleName
+    );
+
+    if (responsibleItems.length > 0) {
+      this.results.push({ session, items: responsibleItems });
     }
+  }
+
+  async visitAgendaItem(_: any): Promise<void> {
+    // Not needed here
+  }
+
+  getResults() {
+    return this.results;
+  }
 }
 
 export class AbsentSessionsVisitor implements ISessionVisitor {

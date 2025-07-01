@@ -1,9 +1,12 @@
 <!-- src/app/pages/sessions/session-list/session-list.component.html -->
+<!-- src/app/pages/sessions/session-list/session-list.component.html -->
 <div class="container mx-auto py-6 space-y-6">
   <!-- header & new session -->
   <div class="flex items-center justify-between">
     <h1 class="text-3xl font-bold">Sessions</h1>
+    <!-- New Session only for Administrators -->
     <a
+      *ngIf="isAdministrator"
       routerLink="/sessions/new"
       class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
     >
@@ -13,10 +16,10 @@
   </div>
 
   <div class="border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700 overflow-hidden">
-
     <!-- filters -->
     <div class="p-4 border-b dark:border-gray-700 space-y-4">
       <div class="flex flex-col gap-4 sm:flex-row sm:items-center">
+        <!-- Search -->
         <div class="relative flex-1">
           <lucide-icon
             name="Search"
@@ -29,7 +32,9 @@
             class="w-full pl-10 border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
           />
         </div>
-        <div class="flex gap-2">
+
+        <!-- Status / Type / Date‐range -->
+        <div class="flex flex-wrap gap-2">
           <select
             [(ngModel)]="statusFilter"
             class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -40,6 +45,7 @@
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
           </select>
+
           <select
             [(ngModel)]="typeFilter"
             class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
@@ -48,6 +54,24 @@
             <option value="ordinary">Ordinary</option>
             <option value="extraordinary">Extraordinary</option>
           </select>
+
+          <!-- Date From -->
+          <input
+            type="date"
+            [(ngModel)]="fromDate"
+            class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            placeholder="From"
+            title="From Date"
+          />
+
+          <!-- Date To -->
+          <input
+            type="date"
+            [(ngModel)]="toDate"
+            class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+            placeholder="To"
+            title="To Date"
+          />
         </div>
       </div>
     </div>
@@ -72,7 +96,10 @@
               Loading sessions…
             </td>
           </tr>
-          <tr *ngFor="let s of filteredSessions" class="border-t dark:border-gray-700">
+          <tr
+            *ngFor="let s of filteredSessions"
+            class="border-t dark:border-gray-700"
+          >
             <td class="px-4 py-2 font-medium">{{ s.number }}</td>
             <td class="px-4 py-2">{{ s.type }}</td>
             <td class="px-4 py-2">{{ s.date | date:'yyyy-MM-dd' }}</td>
@@ -85,15 +112,13 @@
                 {{ s.status }}
               </span>
             </td>
-
-            <!-- HERE: Just display s.quorum -->
             <td class="px-4 py-2">
               <span
                 class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium"
                 [ngClass]="
-                  s.quorum==='Achieved'
+                  s.quorum === 'Achieved'
                     ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100'
-                    : s.quorum==='Not Achieved'
+                    : s.quorum === 'Not Achieved'
                       ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-100'
                       : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100'
                 "
@@ -101,58 +126,78 @@
                 {{ s.quorum }}
               </span>
             </td>
-
             <td class="px-4 py-2">
               <div class="flex items-center gap-2">
-                <!-- View -->
+                <!-- View: available to all -->
                 <a
                   [routerLink]="['/sessions', s._id]"
                   class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   title="View"
                 >
-                  <lucide-icon name="Eye" class="h-4 w-4 text-gray-600 dark:text-gray-300"></lucide-icon>
+                  <lucide-icon
+                    name="Eye"
+                    class="h-4 w-4 text-gray-600 dark:text-gray-300"
+                  ></lucide-icon>
                 </a>
-                <!-- Edit / Send / Start -->
-                <a
-                  *ngIf="s.status==='Scheduled'"
-                  [routerLink]="['/sessions', s._id, 'edit']"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Edit"
-                >
-                  <lucide-icon name="Edit" class="h-4 w-4 text-blue-600"></lucide-icon>
-                </a>
-                <a
-                  *ngIf="s.status==='Scheduled'"
-                  [routerLink]="['/sessions', s._id, 'notify']"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Send Notice"
-                >
-                  <lucide-icon name="Send" class="h-4 w-4 text-green-600"></lucide-icon>
-                </a>
-                <a
-                  *ngIf="s.status==='Scheduled'"
-                  [routerLink]="['/sessions', s._id, 'start']"
-                  class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-                  title="Start Session"
-                >
-                  <lucide-icon name="Play" class="h-4 w-4 text-amber-600"></lucide-icon>
-                </a>
-                <!-- View Minutes -->
+
+                <!-- Edit/Notify/Start only for Admins when Scheduled -->
+                <ng-container *ngIf="isAdministrator && s.status==='Scheduled'">
+                  <a
+                    [routerLink]="['/sessions', s._id, 'edit']"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Edit"
+                  >
+                    <lucide-icon
+                      name="Edit"
+                      class="h-4 w-4 text-blue-600"
+                    ></lucide-icon>
+                  </a>
+                  <a
+                    [routerLink]="['/sessions', s._id, 'notify']"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Send Notice"
+                  >
+                    <lucide-icon
+                      name="Send"
+                      class="h-4 w-4 text-green-600"
+                    ></lucide-icon>
+                  </a>
+                  <a
+                    [routerLink]="['/sessions', s._id, 'start']"
+                    class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                    title="Start Session"
+                  >
+                    <lucide-icon
+                      name="Play"
+                      class="h-4 w-4 text-amber-600"
+                    ></lucide-icon>
+                  </a>
+                </ng-container>
+
+                <!-- View Minutes: available to all when Completed -->
                 <a
                   *ngIf="s.status==='Completed'"
                   [routerLink]="['/sessions', s._id, 'minutes']"
                   class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   title="View Minutes"
                 >
-                  <lucide-icon name="FileText" class="h-4 w-4 text-indigo-600"></lucide-icon>
+                  <lucide-icon
+                    name="FileText"
+                    class="h-4 w-4 text-indigo-600"
+                  ></lucide-icon>
                 </a>
-                <!-- Delete -->
+
+                <!-- Delete: only for Admins -->
                 <button
+                  *ngIf="isAdministrator"
                   (click)="openDelete(s._id!)"
                   class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                   title="Delete Session"
                 >
-                  <lucide-icon name="Trash2" class="h-4 w-4 text-red-600"></lucide-icon>
+                  <lucide-icon
+                    name="Trash2"
+                    class="h-4 w-4 text-red-600"
+                  ></lucide-icon>
                 </button>
               </div>
             </td>

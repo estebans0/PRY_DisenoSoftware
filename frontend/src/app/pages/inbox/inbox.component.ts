@@ -1,11 +1,12 @@
 // frontend/src/app/pages/inbox/inbox.component.ts
-import { Component, OnInit } from '@angular/core';
-import { CommonModule }      from '@angular/common';
-import { RouterModule }      from '@angular/router';
-import { FormsModule }       from '@angular/forms';
-import { MessageService, Mensaje } from '../../services/message.service';
-import { AuthService }       from '../../services/auth.service';
-import { LucideAngularModule } from 'lucide-angular';
+import { Component, OnInit }        from '@angular/core';
+import { CommonModule }             from '@angular/common';
+import { RouterModule }             from '@angular/router';
+import { FormsModule }              from '@angular/forms';
+import { LucideAngularModule }      from 'lucide-angular';
+
+import { MessageService, Mensaje }  from '../../services/message.service';
+import { AuthService }              from '../../services/auth.service';
 
 @Component({
   selector: 'app-inbox',
@@ -27,6 +28,9 @@ export class InboxComponent implements OnInit {
   /** track which messages are expanded */
   expandedIds = new Set<string>();
 
+  /** sort order: 'desc' = newest first, 'asc' = oldest first */
+  sortOrder: 'asc' | 'desc' = 'desc';
+
   constructor(
     private msgSvc: MessageService,
     private auth:   AuthService
@@ -41,6 +45,7 @@ export class InboxComponent implements OnInit {
     this.refresh();
   }
 
+  /** load messages into inbox[] */
   refresh() {
     this.loading = true;
     this.error   = null;
@@ -60,14 +65,15 @@ export class InboxComponent implements OnInit {
     });
   }
 
+  /** toggles expanded view and marks read on first open */
   toggleExpand(m: Mensaje) {
     if (this.expandedIds.has(m._id)) {
       this.expandedIds.delete(m._id);
     } else {
       this.expandedIds.add(m._id);
-      // mark read on first expand
       if (!m.read) {
-        this.msgSvc.markRead(m._id).subscribe(updated => m.read = updated.read);
+        this.msgSvc.markRead(m._id)
+          .subscribe(updated => m.read = updated.read);
       }
     }
   }
@@ -88,5 +94,18 @@ export class InboxComponent implements OnInit {
       next: () => this.refresh(),
       error: err => console.error(err)
     });
+  }
+
+  /**
+   * Return the messages in time‐sorted order
+   */
+  get sortedInbox(): Mensaje[] {
+    return this.inbox
+      .slice()  // copy so we don't mutate the original
+      .sort((a, b) => {
+        const ta = new Date(a.timestamp).valueOf();
+        const tb = new Date(b.timestamp).valueOf();
+        return this.sortOrder === 'asc' ? ta - tb : tb - ta;
+      });
   }
 }

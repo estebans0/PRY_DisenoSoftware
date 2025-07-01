@@ -1,29 +1,47 @@
 <!-- frontend/src/app/pages/inbox/inbox.component.html -->
 <div class="container mx-auto py-6 space-y-4">
 
+  <!-- Title / Sort / Clear All -->
   <div class="flex items-center justify-between">
     <h1 class="text-2xl font-bold">My Inbox</h1>
-    <button
-      class="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
-      (click)="clearAll()"
-      [disabled]="!inbox.length"
-    >
-      Clear All
-    </button>
+    <div class="flex items-center gap-4">
+      <!-- Sort control -->
+      <div class="flex items-center space-x-2">
+        <label for="sortOrder" class="text-sm text-gray-700 dark:text-gray-300">Sort:</label>
+        <select
+          id="sortOrder"
+          [(ngModel)]="sortOrder"
+          class="border rounded px-2 py-1 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 text-sm"
+        >
+          <option value="desc">Newest first</option>
+          <option value="asc">Oldest first</option>
+        </select>
+      </div>
+      <!-- Clear all -->
+      <button
+        class="px-3 py-1 bg-red-500 text-white rounded text-sm hover:bg-red-600"
+        (click)="clearAll()"
+        [disabled]="!inbox.length"
+      >
+        Clear All
+      </button>
+    </div>
   </div>
 
+  <!-- Loading / Error / Empty states -->
   <div *ngIf="loading" class="text-gray-500">Loading…</div>
   <div *ngIf="error" class="text-red-500">{{ error }}</div>
   <div *ngIf="!loading && !inbox.length" class="text-gray-600">No messages.</div>
 
-  <div *ngFor="let m of inbox"
-       class="border rounded-lg overflow-hidden bg-white dark:bg-gray-800 cursor-pointer"
-       (click)="toggleExpand(m)"
+  <!-- Message list -->
+  <div
+    *ngFor="let m of sortedInbox"
+    class="border rounded-lg overflow-hidden bg-white dark:bg-gray-800 cursor-pointer"
+    (click)="toggleExpand(m)"
   >
     <!-- summary row -->
     <div class="flex items-center justify-between px-4 py-3">
       <div class="flex items-center space-x-2">
-        <!-- dot indicator -->
         <lucide-icon
           [name]="m.read ? 'Circle' : 'Circle'"
           class="h-2 w-2"

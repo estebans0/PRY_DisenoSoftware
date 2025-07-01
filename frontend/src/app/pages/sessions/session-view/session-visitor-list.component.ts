@@ -1,4 +1,4 @@
-// src/app/pages/sessions/session-visitor-list/session-visitor-list.component.ts
+// src/app/pages/sessions/session-view/session-visitor-list.component.ts
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -44,14 +44,10 @@ export class SessionVisitorListComponent implements OnInit {
   ngOnInit() {
     this.loading = true;
     this.currentUser = this.authService.getCurrentUser();
-    console.log('Current user:', this.currentUser);
-    
     if (this.currentUser) {
       this.emailFilter = this.currentUser.email;
-      this.nameFilter = this.currentUser.firstName + ' ' + this.currentUser.lastName;
-      console.log('emailFilter:', this.emailFilter);
-      console.log('nameFilter:', this.nameFilter);
-      this.search(); // Auto-search with user's data
+      this.nameFilter  = `${this.currentUser.firstName} ${this.currentUser.lastName}`;
+      this.search(); // Auto‐search on load
     } else {
       this.loading = false;
     }
@@ -62,99 +58,27 @@ export class SessionVisitorListComponent implements OnInit {
     if (!session.agenda || !Array.isArray(session.agenda)) {
       return [];
     }
-    // Since we already filtered in search(), just return all agenda items for this session
     return session.agenda;
   }
 
-  // Get responsible items for the current session
+  // Get responsible items for the current session (unused now)
   getResponsibleItems(session: any): any[] {
     if (!session.agenda || !Array.isArray(session.agenda)) {
       return [];
     }
-    // Since we already filtered in search(), just return all agenda items for this session
     return session.agenda;
   }
 
-  search() {
-    if (!this.currentUser) {
-      return;
+  toggleSessionExpansion(sessionId: string) {
+    if (this.expandedSessionIds.has(sessionId)) {
+      this.expandedSessionIds.delete(sessionId);
+    } else {
+      this.expandedSessionIds.add(sessionId);
     }
+  }
 
-    this.loading = true;
-    this.currentResults = [];
-    console.log('search() called with viewType:', this.viewType, 'nameFilter:', this.nameFilter, 'emailFilter:', this.emailFilter);
-
-    // For both presenter and responsible, we'll fetch all sessions and filter on the frontend
-    if (this.viewType === 'presenter' || this.viewType === 'responsible') {
-      this.sessionService.getSessions().subscribe({
-        next: (allSessions) => {
-          console.log('All sessions retrieved:', allSessions);
-          
-          // Filter sessions that have agenda items where the user is presenter or responsible
-          this.currentResults = allSessions
-            .map(session => {
-              let relevantItems: any[] = [];
-              
-              if (this.viewType === 'presenter') {
-                // Find agenda items where user is presenter
-                relevantItems = (session.agenda || []).filter((item: any) => 
-                  item.presenter === this.nameFilter || 
-                  item.presenter === `${this.currentUser.firstName} ${this.currentUser.lastName}`
-                );
-              } else if (this.viewType === 'responsible') {
-                // Find agenda items where user has assigned actions
-                relevantItems = (session.agenda || []).filter((item: any) => 
-                  item.actions && Array.isArray(item.actions) && 
-                  item.actions.some((action: any) => 
-                    action.assignee?.name === this.nameFilter ||
-                    action.assignee?.name === `${this.currentUser.firstName} ${this.currentUser.lastName}` ||
-                    action.assignee === this.nameFilter ||
-                    action.assignee === `${this.currentUser.firstName} ${this.currentUser.lastName}`
-                  )
-                );
-              }
-
-              // Return session with relevant items if any found
-              if (relevantItems.length > 0) {
-                return {
-                  sessionId: session._id,
-                  sessionNumber: session.number,
-                  date: session.date,
-                  time: session.time,
-                  location: session.location,
-                  modality: session.modality,
-                  type: session.type,
-                  status: session.status,
-                  quorum: session.quorum,
-                  agenda: relevantItems
-                };
-              }
-              return null;
-            })
-            .filter(session => session !== null); // Remove null entries
-
-          console.log('Filtered results:', this.currentResults);
-          this.loading = false;
-        },
-        error: (err) => {
-          console.error('Error fetching sessions:', err);
-          this.loading = false;
-        }
-      });
-    } else if (this.viewType === 'absent') {
-      // For absent sessions, use the existing endpoint
-      this.sessionService.getAbsentSessions(this.emailFilter).subscribe({
-        next: (sessions) => {
-          console.log('getAbsentSessions result:', sessions);
-          this.currentResults = Array.isArray(sessions) ? sessions : Object.values(sessions);
-          this.loading = false;
-        },
-        error: (err) => {
-          console.error(err);
-          this.loading = false;
-        }
-      });
-    }
+  isSessionExpanded(sessionId: string): boolean {
+    return this.expandedSessionIds.has(sessionId);
   }
 
   badgeClass(status: string): string {
@@ -176,40 +100,100 @@ export class SessionVisitorListComponent implements OnInit {
   }
 
   getQuorumStatus(s: any): 'Pending' | 'Achieved' | 'Not Achieved' {
-    if (!s.status || typeof s.status !== 'string') {
-      return 'Pending';
-    }
-    if (s.status.toLowerCase() === 'scheduled') {
-      return 'Pending';
-    }
-    // Simplified quorum logic - adjust as needed
+    if (!s.status || typeof s.status !== 'string') return 'Pending';
+    if (s.status.toLowerCase() === 'scheduled') return 'Pending';
     return s.quorum || 'Pending';
   }
 
-  toggleSessionExpansion(sessionId: string) {
-    if (this.expandedSessionIds.has(sessionId)) {
-      this.expandedSessionIds.delete(sessionId);
-    } else {
-      this.expandedSessionIds.add(sessionId);
-    }
-  }
+  /**
+   * Main search routine: for 'presenter' and 'absent' we
+   * still do exactly what you had.  For 'responsible'
+   * we now call the backend visitor API.
+   */
+  search() {
+    if (!this.currentUser) return;
 
-  isSessionExpanded(sessionId: string): boolean {
-    return this.expandedSessionIds.has(sessionId);
-  }
+    this.loading = true;
+    this.currentResults = [];
 
-  getSessionDetailsForUser(session: any): any {
+    // — Presenter branch (unchanged) —
     if (this.viewType === 'presenter') {
-      return {
-        type: 'presenter',
-        items: this.getPresenterItems(session)
-      };
+      this.sessionService.getSessions().subscribe({
+        next: (allSessions) => {
+          this.currentResults = allSessions
+            .map(session => {
+              const relevantItems = (session.agenda || []).filter((item: any) =>
+                item.presenter === this.nameFilter
+              );
+              if (relevantItems.length > 0) {
+                return {
+                  sessionId:     session._id,
+                  sessionNumber: session.number,
+                  date:          session.date,
+                  time:          session.time,
+                  location:      session.location,
+                  modality:      session.modality,
+                  type:          session.type,
+                  status:        session.status,
+                  quorum:        session.quorum,
+                  agenda:        relevantItems
+                };
+              }
+              return null;
+            })
+            .filter(s => s !== null);
+          this.loading = false;
+        },
+        error: () => { this.loading = false; }
+      });
+
+    // — Responsible branch (NEW) —
     } else if (this.viewType === 'responsible') {
-      return {
-        type: 'responsible',
-        items: session.items || []
-      };
+      this.sessionService.getResponsiblePoints(this.nameFilter).subscribe({
+        next: (res: any) => {
+          // the visitor‐controller returns { success, count, data: [...] }
+          const hits = Array.isArray(res.data) ? res.data : [];
+          this.currentResults = hits.map((r: any) => ({
+            session: {
+              sessionId:     r.sessionId,
+              sessionNumber: r.sessionNumber,
+              date:          r.date,
+              time:          r.time,
+              location:      r.location,
+              modality:      r.modality,
+              type:          r.type,
+              status:        r.status,
+              quorum:        r.quorum
+            },
+            items: r.items
+          }));
+          this.loading = false;
+        },
+        error: () => { this.loading = false; }
+      });
+
+    // — Absent branch (unchanged) —
+    } else {
+      this.sessionService.getAbsentSessions(this.emailFilter).subscribe({
+        next: (sessions) => {
+          this.currentResults = Array.isArray(sessions)
+            ? sessions.map(s => ({
+                sessionId:     s._id,
+                sessionNumber: s.number,
+                date:          s.date,
+                time:          s.time,
+                location:      s.location,
+                modality:      s.modality,
+                type:          s.type,
+                status:        s.status,
+                quorum:        s.quorum,
+                agenda:        []
+              }))
+            : [];
+          this.loading = false;
+        },
+        error: () => { this.loading = false; }
+      });
     }
-    return { type: 'unknown', items: [] };
   }
 }

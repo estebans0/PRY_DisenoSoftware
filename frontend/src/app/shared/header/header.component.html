@@ -61,9 +61,9 @@
           <lucide-icon name="Users" class="h-5 w-5"></lucide-icon>
           Members
         </a>
-        <!-- Sessions - Only for Administrators -->
+        <!-- Sessions - For Administrators & JD Members -->
         <a
-          *ngIf="isAdministrator"
+          *ngIf="isAdministrator || isJDMember"
           routerLink="/sessions"
           class="flex items-center gap-1 text-gray-700 hover:text-blue-600 dark:text-gray-300"
         >

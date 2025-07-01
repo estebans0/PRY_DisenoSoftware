@@ -18,6 +18,7 @@
         <option value="absent">Sesiones donde estuve ausente</option>
       </select>
 
+      <!-- Email for presenter & absent -->
       <input
         *ngIf="viewType === 'presenter' || viewType === 'absent'"
         type="email"
@@ -25,8 +26,9 @@
         [(ngModel)]="emailFilter"
         (keyup.enter)="search()"
         class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 w-full sm:w-auto"
-      >
+      />
 
+      <!-- Name for responsible -->
       <input
         *ngIf="viewType === 'responsible'"
         type="text"
@@ -34,7 +36,7 @@
         [(ngModel)]="nameFilter"
         (keyup.enter)="search()"
         class="border rounded px-3 py-2 bg-white dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100 w-full sm:w-auto"
-      >
+      />
 
       <button
         (click)="search()"
@@ -46,7 +48,7 @@
     </div>
   </div>
 
-  <!-- Results -->
+  <!-- Results Container -->
   <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
     <!-- Loading -->
     <div *ngIf="loading" class="p-8 text-center">
@@ -56,21 +58,20 @@
       </div>
     </div>
 
-    <!-- Presenter Results -->
+    <!-- PRESENTER -->
     <div *ngIf="!loading && viewType === 'presenter'">
       <div *ngIf="currentResults.length === 0" class="p-8 text-center text-gray-500">
         No se encontraron sesiones donde seas expositor.
       </div>
-
       <div *ngFor="let session of currentResults" class="border-b dark:border-gray-700">
-        <!-- Header -->
+        <!-- Session Header -->
         <div
           class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
           (click)="toggleSessionExpansion(session.sessionId)"
         >
           <div class="flex items-center space-x-2">
             <h2 class="text-lg font-semibold">
-              Sesión #{{ session.number }} – {{ session.date | date:'mediumDate' }}
+              Sesión #{{ session.sessionNumber }} – {{ session.date | date:'mediumDate' }}
             </h2>
             <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(session.status)">
               {{ session.status }}
@@ -97,25 +98,16 @@
 
             <!-- Agenda Items -->
             <div class="space-y-4">
-              <h4 class="font-medium text-gray-800 dark:text-gray-200">
-                Mis puntos como expositor:
-              </h4>
-
+              <h4 class="font-medium text-gray-800 dark:text-gray-200">Mis puntos como expositor:</h4>
               <ng-container *ngFor="let item of getPresenterItems(session)">
                 <div
                   class="ml-4 pl-4 border-l-2 border-blue-200 dark:border-blue-600 py-3 bg-white dark:bg-gray-800 rounded"
                 >
-                  <h5 class="font-semibold">
-                    {{ item.order }}. {{ item.title }}
-                  </h5>
-
-                  <!-- Discussion -->
+                  <h5 class="font-semibold">{{ item.order }}. {{ item.title }}</h5>
                   <div *ngIf="item.notes" class="mt-1">
                     <p class="font-medium">Discussion:</p>
                     <p class="text-sm text-gray-600 dark:text-gray-400">{{ item.notes }}</p>
                   </div>
-
-                  <!-- Voting Results -->
                   <div *ngIf="item.pro?.length || item.against?.length || item.abstained?.length" class="mt-1">
                     <p class="font-medium">Voting Results:</p>
                     <p class="text-sm text-gray-600 dark:text-gray-400">
@@ -124,8 +116,6 @@
                       Abstain: {{ item.abstained?.length || 0 }}
                     </p>
                   </div>
-
-                  <!-- Decision -->
                   <div *ngIf="item.decision" class="mt-1">
                     <p class="font-medium">Decision:</p>
                     <p
@@ -136,8 +126,6 @@
                       {{ item.decision }}
                     </p>
                   </div>
-
-                  <!-- Action Items -->
                   <div *ngIf="item.actions?.length" class="mt-2">
                     <p class="font-medium">Action Items:</p>
                     <ul class="list-disc pl-5 text-sm text-gray-600 dark:text-gray-400">
@@ -149,30 +137,28 @@
                   </div>
                 </div>
               </ng-container>
-            </div>
-
-            <!-- Full Minutes Link -->
-            <div class="pt-2 border-t">
-              <a
-                [routerLink]="['/sessions', session.sessionId, 'minutes']"
-                class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
-              >
-                <i-lucide name="external-link" class="w-4 h-4"></i-lucide>
-                Ver acta completa
-              </a>
+              <div class="pt-2 border-t">
+                <a
+                  [routerLink]="['/sessions', session.sessionId, 'minutes']"
+                  class="text-blue-600 hover:text-blue-800 text-sm flex items-center gap-1"
+                >
+                  <i-lucide name="external-link" class="w-4 h-4"></i-lucide>
+                  Ver acta completa
+                </a>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Responsible Points Results -->
+    <!-- RESPONSIBLE -->
     <div *ngIf="!loading && viewType === 'responsible'">
       <div *ngIf="currentResults.length === 0" class="p-8 text-center text-gray-500">
         No se encontraron puntos donde seas responsable.
       </div>
       <div *ngFor="let result of currentResults" class="border-b dark:border-gray-700">
-        <!-- Session Header -->
+        <!-- Header -->
         <div
           class="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
           (click)="toggleSessionExpansion(result.session.sessionId)"
@@ -191,16 +177,13 @@
           ></i-lucide>
         </div>
 
-        <!-- Expanded Content -->
+        <!-- Expanded -->
         <div *ngIf="isSessionExpanded(result.session.sessionId)" class="px-4 pb-4 bg-gray-50 dark:bg-gray-700">
           <div class="space-y-3">
-            <!-- Session Basic Info -->
             <div class="text-sm text-gray-600 dark:text-gray-300 border-b pb-2">
               <p><strong>Tipo:</strong> {{ result.session.type || 'N/A' }}</p>
               <p><strong>Fecha:</strong> {{ result.session.date | date:'fullDate' }}</p>
             </div>
-
-            <!-- Responsible Points -->
             <div class="space-y-2">
               <h4 class="font-medium text-gray-800 dark:text-gray-200">Mis puntos como responsable:</h4>
               <div
@@ -222,13 +205,8 @@
                     </li>
                   </ul>
                 </div>
-                <div *ngIf="item.notes" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  <strong>Notas:</strong> {{ item.notes }}
-                </div>
               </div>
             </div>
-
-            <!-- View Full Minutes -->
             <div class="pt-2 border-t">
               <a
                 [routerLink]="['/sessions', result.session.sessionId, 'minutes']"
@@ -243,7 +221,7 @@
       </div>
     </div>
 
-    <!-- Absent (unchanged) -->
+    <!-- Absent -->
     <div *ngIf="!loading && viewType === 'absent'">
       <div *ngIf="currentResults.length === 0" class="p-8 text-center text-gray-500">
         No se encontraron sesiones donde hayas estado ausente.
@@ -271,10 +249,16 @@
         <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
           <tr *ngFor="let session of currentResults">
             <td class="px-4 py-3 whitespace-nowrap">
-              <div class="font-medium">#{{ session.number }}</div>
-              <div class="text-sm text-gray-500 dark:text-gray-400">{{ session.type }}</div>
+              <div class="font-medium">
+                #{{ session.sessionNumber || session.number }}
+              </div>
+              <div class="text-sm text-gray-500 dark:text-gray-400">
+                {{ session.type }}
+              </div>
             </td>
-            <td class="px-4 py-3 whitespace-nowrap">{{ session.date | date:'mediumDate' }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              {{ session.date | date:'mediumDate' }}
+            </td>
             <td class="px-4 py-3 whitespace-nowrap">
               <span class="text-xs px-2 py-1 rounded-full" [ngClass]="badgeClass(session.status)">
                 {{ session.status }}
