@@ -133,7 +133,7 @@
                   </a>
                   <!-- Send Notice -->
                   <a
-                    *ngIf="s.status==='Scheduled' && !s.notified"
+                    *ngIf="s.status==='Scheduled'"
                     [routerLink]="['/sessions', s._id, 'notify']"
                     class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
                     title="Send Notice"
