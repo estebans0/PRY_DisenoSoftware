@@ -40,6 +40,9 @@ export class SessionListComponent implements OnInit {
   totalMembers = 0;
   quorumPercentage = 0;
 
+  // user role
+  currentUser: any = null;
+
   constructor(
     private sessionsSvc: SessionService,
     private settingsSvc: SettingsService,
@@ -48,6 +51,7 @@ export class SessionListComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    this.currentUser = this.authSvc.getCurrentUser();
     this.loading = true;
     forkJoin({
       sessions: this.sessionsSvc.getSessions(),
@@ -142,18 +146,16 @@ export class SessionListComponent implements OnInit {
   }
 
   /**
-   * Check if the current user is a JDMEMBER (limited actions)
+   * Check if current user is a JD Member (has limited permissions)
    */
   isJDMember(): boolean {
-    const currentUser = this.authSvc.getCurrentUser();
-    return currentUser?.tipoUsuario === 'JDMEMBER';
+    return this.currentUser?.tipoUsuario === 'JDMEMBER';
   }
 
   /**
-   * Check if the current user is an ADMINISTRADOR (full access)
+   * Check if current user is an Administrator (has full permissions)
    */
   isAdmin(): boolean {
-    const currentUser = this.authSvc.getCurrentUser();
-    return currentUser?.tipoUsuario === 'ADMINISTRADOR';
+    return this.currentUser?.tipoUsuario === 'ADMINISTRADOR';
   }
 }

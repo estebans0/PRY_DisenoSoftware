@@ -375,16 +375,16 @@ export class SessionStartComponent implements OnInit, OnDestroy {
 
   // — Computed helpers —
 
+  get presentAttendees(): Attendee[] {
+    return this.attendees.filter(a => a.status === 'Present');
+  }
+
   get presentCount(): number {
     return this.attendees.filter(a => a.status === 'Present').length;
   }
 
   get quorumAchieved(): boolean {
     return this.presentCount >= Math.ceil(this.attendees.length / 2);
-  }
-
-  get presentAttendees(): Attendee[] {
-    return this.attendees.filter(att => att.status === 'Present');
   }
 
   getSessionElapsed(): string {

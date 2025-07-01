@@ -2,13 +2,7 @@
 <div class="container mx-auto py-6 space-y-6">
   <!-- header & new session -->
   <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-3xl font-bold">Sessions</h1>
-      <p *ngIf="isJDMember()" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-        <lucide-icon name="Info" class="h-4 w-4 inline mr-1"></lucide-icon>
-        View-only access - Contact administrator for session management
-      </p>
-    </div>
+    <h1 class="text-3xl font-bold">Sessions</h1>
     <a
       *ngIf="isAdmin()"
       routerLink="/sessions/new"
@@ -111,7 +105,7 @@
 
             <td class="px-4 py-2">
               <div class="flex items-center gap-2">
-                <!-- View (available to all users) -->
+                <!-- View - Available to all users -->
                 <a
                   [routerLink]="['/sessions', s._id]"
                   class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
@@ -119,7 +113,7 @@
                 >
                   <lucide-icon name="Eye" class="h-4 w-4 text-gray-600 dark:text-gray-300"></lucide-icon>
                 </a>
-
+                
                 <!-- Admin-only actions -->
                 <ng-container *ngIf="isAdmin()">
                   <!-- Edit -->
@@ -158,8 +152,8 @@
                     <lucide-icon name="Trash2" class="h-4 w-4 text-red-600"></lucide-icon>
                   </button>
                 </ng-container>
-
-                <!-- View Minutes (available to all users) -->
+                
+                <!-- View Minutes - Available to all users -->
                 <a
                   *ngIf="s.status==='Completed'"
                   [routerLink]="['/sessions', s._id, 'minutes']"
